@@ -1,0 +1,69 @@
+universe:
+  - symbol: QQQ
+    name: Nasdaq 100 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: SPY
+    name: S&P 500 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: 510300.SH
+    name: 沪深300ETF
+    asset_class: cn_equity
+    currency: CNY
+  - symbol: 159915.SZ
+    name: 创业板ETF
+    asset_class: cn_equity
+    currency: CNY
+  - symbol: 3067.HK
+    name: 恒生科技ETF
+    asset_class: hk_equity
+    currency: HKD
+  - symbol: GLD
+    name: Gold ETF
+    asset_class: commodity
+    currency: USD
+  - symbol: USO
+    name: Oil ETF
+    asset_class: commodity
+    currency: USD
+  - symbol: SOYB
+    name: Soybean ETF
+    asset_class: commodity
+    currency: USD
+
+data:
+  source: csv
+  path: ../data/raw/sample_prices.csv
+  start: "2018-01-01"
+  end: "2024-12-31"
+
+factors:
+  - name: momentum
+    params:
+      window: 126
+  - name: volatility
+    params:
+      window: 63
+  - name: ma_gap
+    params:
+      window: 120
+
+strategy:
+  name: multi_factor_rule
+  params:
+    top_n: 4
+    max_weight: 0.35
+    factor_weights:
+      momentum: 1.0
+      ma_gap: 0.4
+      volatility: -0.8
+
+backtest:
+  initial_cash: 1000000
+  commission_bps: 2
+  slippage_bps: 1
+  rebalance: M
+  execution: next_close
+
+output_dir: ../outputs/rebalance
