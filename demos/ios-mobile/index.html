@@ -3,26 +3,29 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ETF Quant iOS Demo</title>
+    <title>ETF Quant Subscription Demo</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="phone-shell" aria-label="ETF Quant iOS demo">
+    <main class="phone-shell" aria-label="ETF Quant subscription platform demo">
       <section class="screen" data-view="today">
         <header class="topbar">
           <div>
-            <p class="eyebrow">ETF Quant</p>
+            <p class="eyebrow">今日计划</p>
             <h1 id="strategyName">PYF ETF Rotation</h1>
           </div>
-          <button class="icon-button" id="notifyButton" title="设置提醒" aria-label="设置提醒">⏰</button>
+          <button class="icon-button" id="notifyButton" title="设置提醒" aria-label="设置提醒">09:20</button>
         </header>
 
-        <section class="signal-panel">
-          <div>
-            <span class="status-dot"></span>
-            <span id="latestSignal">Risk-on, rotate to gold and broad-market beta</span>
+        <section class="hero-card">
+          <div class="hero-row">
+            <span id="subscriptionBadge" class="pill success">已订阅</span>
+            <span id="planDate">2026-05-13</span>
           </div>
-          <strong id="reminderTime">09:20</strong>
+          <h2 id="latestSignal">风险偏积极，黄金和宽基权益占优</h2>
+          <p id="plainSummary">用趋势和波动过滤 ETF，每天收盘后给出下一交易日目标仓位。</p>
+          <p id="recommendationText" class="recommendation">基于你的风险偏好推荐。</p>
+          <button id="copyPlanButton" class="primary-button">复制今日调仓计划</button>
         </section>
 
         <section class="metric-grid" aria-label="策略指标">
@@ -39,17 +42,18 @@
             <strong id="sharpe">1.34</strong>
           </article>
           <article>
-            <span>波动率</span>
-            <strong id="volatility">13.8%</strong>
+            <span>计划资金</span>
+            <strong id="capitalAmount">¥100,000</strong>
           </article>
         </section>
 
         <section class="card chart-card">
           <div class="section-head">
-            <h2>回测曲线</h2>
+            <h2>回测净值</h2>
             <span>策略 vs 基准</span>
           </div>
           <canvas id="equityCanvas" width="640" height="320"></canvas>
+          <p class="disclaimer">历史回测不代表未来收益，实际交易会受到滑点、费用和执行价格影响。</p>
         </section>
 
         <section class="card">
@@ -61,20 +65,147 @@
         </section>
       </section>
 
-      <section class="screen hidden" data-view="strategies">
+      <section class="screen hidden" data-view="explore">
         <header class="topbar compact">
           <div>
-            <p class="eyebrow">选择策略</p>
-            <h1>Strategies</h1>
+            <p class="eyebrow">策略市场</p>
+            <h1>Explore</h1>
           </div>
         </header>
-        <div id="strategyList" class="strategy-list"></div>
+        <div class="segmented">
+          <button class="active">稳健收益</button>
+          <button>低回撤</button>
+          <button>高弹性</button>
+        </div>
+        <section class="card recommendation-card">
+          <div class="section-head">
+            <h2>为你推荐</h2>
+            <span id="riskProfileLabel">均衡型</span>
+          </div>
+          <p id="exploreRecommendation" class="body-copy"></p>
+          <button id="applyRecommendationButton" class="primary-button">使用推荐策略</button>
+        </section>
+        <div id="marketplaceList" class="strategy-list"></div>
+      </section>
+
+      <section class="screen hidden" data-view="detail">
+        <header class="topbar compact">
+          <div>
+            <p class="eyebrow">策略详情</p>
+            <h1 id="detailName">PYF ETF Rotation</h1>
+          </div>
+        </header>
+
+        <section class="card subscribe-card">
+          <div>
+            <span id="detailCreator" class="pill">PYF Research</span>
+            <h2 id="detailFit">适合想要积极轮动的 ETF 用户</h2>
+            <p id="detailSubtitle" class="body-copy">Momentum plus volatility rotation across A-share and commodity ETFs</p>
+          </div>
+          <button id="subscribeButton" class="primary-button">7 天试用，然后 ¥59/月</button>
+          <p class="disclaimer">试用期间可查看每日信号、调仓计划、风险提示和回测详情；不会自动连接券商下单。</p>
+        </section>
+
+        <section class="card trust-card">
+          <div>
+            <span>策略信任分</span>
+            <strong id="trustScore">92</strong>
+          </div>
+          <p id="creatorBio" class="body-copy"></p>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>验证记录</h2>
+            <span>平台审核</span>
+          </div>
+          <ul id="verificationList" class="check-list"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>策略原理</h2>
+            <span>新手可读</span>
+          </div>
+          <p id="principleText" class="body-copy"></p>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>订阅后获得</h2>
+          </div>
+          <ul id="deliverablesList" class="check-list"></ul>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>主要风险</h2>
+          </div>
+          <ul id="riskList" class="risk-list"></ul>
+        </section>
+
         <section class="card">
           <div class="section-head">
             <h2>目标权重</h2>
             <span id="allocationName">PYF ETF Rotation</span>
           </div>
           <div id="allocationList" class="allocation-list"></div>
+        </section>
+      </section>
+
+      <section class="screen hidden" data-view="studio">
+        <header class="topbar compact">
+          <div>
+            <p class="eyebrow">策略发布</p>
+            <h1>Creator Studio</h1>
+          </div>
+        </header>
+
+        <section class="hero-card">
+          <div class="hero-row">
+            <span class="pill">平台抽成 20%</span>
+            <span>创作者 80%</span>
+          </div>
+          <h2>把你的策略发布给订阅用户</h2>
+          <p>上传策略说明、回测曲线、调仓频率和风险披露，通过审核后即可按月收费。</p>
+        </section>
+
+        <section class="metric-grid">
+          <article>
+            <span>月费示例</span>
+            <strong>¥99</strong>
+          </article>
+          <article>
+            <span>订阅用户</span>
+            <strong>300</strong>
+          </article>
+          <article>
+            <span>平台收入</span>
+            <strong>¥5,940</strong>
+          </article>
+          <article>
+            <span>创作者收入</span>
+            <strong>¥23,760</strong>
+          </article>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>发布审核清单</h2>
+          </div>
+          <ul class="check-list">
+            <li>上传可复现回测配置和样本外曲线</li>
+            <li>解释策略逻辑，避免只给黑箱结果</li>
+            <li>披露最大回撤、换手率和失效场景</li>
+            <li>提供每日或每周调仓信号接口</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <div class="section-head">
+            <h2>平台提供</h2>
+          </div>
+          <p class="body-copy">策略市场曝光、订阅计费、信号分发、调仓提醒、回测展示模板和基础合规披露。</p>
         </section>
       </section>
 
@@ -86,23 +217,33 @@
           </div>
         </header>
         <section class="card settings-card">
-          <label for="timeInput">每日提醒时间</label>
+          <label for="capitalInput">计划投入金额</label>
+          <input id="capitalInput" type="number" min="1000" step="1000" value="100000" />
+          <label for="riskSelect">风险偏好</label>
+          <select id="riskSelect">
+            <option value="conservative">稳健型：优先控制回撤</option>
+            <option value="balanced" selected>均衡型：收益和回撤都要看</option>
+            <option value="growth">成长型：接受波动追求更高弹性</option>
+          </select>
+          <label for="timeInput">每日调仓提醒时间</label>
           <input id="timeInput" type="time" value="09:20" />
-          <button id="saveReminderButton">保存提醒</button>
+          <button id="saveProfileButton">保存画像和提醒</button>
           <p id="permissionText">浏览器 demo 会模拟提醒设置；原生 iOS 版本使用本地通知。</p>
         </section>
         <section class="card">
           <div class="section-head">
-            <h2>后续数据连接</h2>
+            <h2>账户状态</h2>
           </div>
-          <p class="body-copy">当前 demo 使用内置样例数据。下一步可以把策略列表、调仓计划和回测曲线接到现有 Python 服务。</p>
+          <p id="accountSummary" class="body-copy">已订阅 1 个策略，调仓提醒开启。</p>
         </section>
       </section>
 
       <nav class="tabbar" aria-label="主导航">
-        <button class="active" data-tab="today" aria-label="今日">⌁<span>Today</span></button>
-        <button data-tab="strategies" aria-label="策略">▦<span>Strategies</span></button>
-        <button data-tab="settings" aria-label="设置">⚙<span>Settings</span></button>
+        <button class="active" data-tab="today" aria-label="今日"><span class="tab-icon">T</span><span>Today</span></button>
+        <button data-tab="explore" aria-label="市场"><span class="tab-icon">E</span><span>Explore</span></button>
+        <button data-tab="detail" aria-label="详情"><span class="tab-icon">D</span><span>Detail</span></button>
+        <button data-tab="studio" aria-label="发布"><span class="tab-icon">S</span><span>Studio</span></button>
+        <button data-tab="settings" aria-label="设置"><span class="tab-icon">G</span><span>Settings</span></button>
       </nav>
     </main>
     <div id="toast" class="toast" role="status"></div>

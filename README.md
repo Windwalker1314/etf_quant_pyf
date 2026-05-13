@@ -81,21 +81,36 @@ scripts/app.sh
 
 然后打开 <http://127.0.0.1:8765>。界面会自动读取 `configs/*hybrid*.yaml` 作为可选策略，默认使用 `configs/bigquant_rotation_hybrid_candidate_turnover.yaml`。持仓和现金保存到 `data/live/positions.csv`，每天早上点“生成计划”即可生成调仓动作。设置会记在 `data/live/app_state.json`。
 
-## iOS App Demo
+## 本地产品原型
 
-当前分支包含一个 ETF Quant iOS 产品 demo：
+当前分支包含一个 ETF Quant 移动端产品原型。这个原型用于研究“策略订阅平台”的产品形态：普通用户可以查看策略收益、理解策略原理、设置每日调仓提醒；策略开发者可以理解发布策略、订阅分成和平台审核的大致流程。
+
+重要说明：这不是准备直接提交 App Store 的金融 App。金融投资类 App 对资质、合规、内容审核、风险披露和交易相关功能要求很高，个人开发者直接上架通过率很低。当前原型建议定位为本地研究、产品验证和内部演示。
 
 - 产品设计：`docs/product/ios_quant_app_demo.md`
+- 订阅平台迭代需求：
+  - `docs/product/subscription_platform_iteration_1.md`
+  - `docs/product/subscription_platform_iteration_2.md`
+  - `docs/product/subscription_platform_iteration_3.md`
 - 原生 SwiftUI 工程：`ios/ETFQuantApp/ETFQuantApp.xcodeproj`
 - 无需 Xcode 的移动端预览：`demos/ios-mobile/index.html`
 
-本机如果还没有完整 Xcode，可以先启动浏览器预览：
+本机如果还没有完整 Xcode，可以先启动浏览器预览，这是后续本地迭代的主入口：
 
 ```bash
 python3 -m http.server 8877 --directory demos/ios-mobile
 ```
 
-然后打开 <http://127.0.0.1:8877>。原生工程内置了策略选择、每日调仓提醒、回测曲线和调仓计划预览，后续可以把 demo 数据仓库替换为现有 Python 服务 API。
+然后打开 <http://127.0.0.1:8877>。
+
+当前原型已包含：
+
+- 策略市场 Explore：展示策略价格、订阅人数、收益、回撤、信任分。
+- 策略详情 Detail：解释策略原理、订阅交付物、主要风险、验证记录和创作者信息。
+- 今日计划 Today：展示已订阅策略、回测曲线、调仓动作和按用户资金估算的目标金额。
+- 新手画像 Settings：输入计划投入金额、风险偏好和每日提醒时间。
+- 创作者工作台 Studio：展示策略发布要求、平台抽成和创作者收入示例。
+- SwiftUI 工程：与浏览器原型保持相同数据结构，方便未来有完整 Xcode 后继续原生化。
 
 开盘前生成交易计划：
 

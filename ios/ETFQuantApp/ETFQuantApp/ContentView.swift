@@ -2,8 +2,6 @@ import Charts
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject private var store: AppStore
-
     var body: some View {
         TabView {
             TodayView()
@@ -11,14 +9,19 @@ struct ContentView: View {
                     Label("Today", systemImage: "sun.max")
                 }
 
-            StrategiesView()
+            ExploreView()
                 .tabItem {
-                    Label("Strategies", systemImage: "square.stack.3d.up")
+                    Label("Explore", systemImage: "storefront")
                 }
 
-            BacktestView()
+            StrategyDetailView()
                 .tabItem {
-                    Label("Backtest", systemImage: "chart.xyaxis.line")
+                    Label("Detail", systemImage: "doc.text.magnifyingglass")
+                }
+
+            CreatorStudioView()
+                .tabItem {
+                    Label("Studio", systemImage: "hammer")
                 }
 
             SettingsView()
@@ -39,7 +42,9 @@ struct TodayView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     StrategyHeader(strategy: store.selectedStrategy)
                     MetricsStrip(strategy: store.selectedStrategy)
+                    MetricTile(title: "Plan Capital", value: store.profile.capital.currencyText)
                     ReminderBanner()
+                    ChartCard(strategy: store.selectedStrategy)
                     OrdersSection(strategy: store.selectedStrategy)
                 }
                 .padding()
@@ -50,52 +55,118 @@ struct TodayView: View {
     }
 }
 
-struct StrategiesView: View {
+struct ExploreView: View {
     @EnvironmentObject private var store: AppStore
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Strategy") {
-                    Picker("Selected strategy", selection: $store.selectedStrategyID) {
-                        ForEach(store.strategies) { strategy in
-                            Text(strategy.name).tag(strategy.id)
+            ScrollView {
+                VStack(spacing: 12) {
+                    RecommendationCard()
+                    ForEach(store.strategies) { strategy in
+                        MarketplaceCard(strategy: strategy, isSelected: strategy.id == store.selectedStrategyID) {
+                            store.selectedStrategyID = strategy.id
                         }
                     }
                 }
-
-                Section("Allocation") {
-                    ForEach(store.selectedStrategy.allocation) { item in
-                        AllocationRow(allocation: item)
-                    }
-                }
-
-                Section("Risk note") {
-                    Text(store.selectedStrategy.riskNote)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                .padding()
             }
-            .navigationTitle("Strategies")
+            .background(Color.appGroupedBackground)
+            .navigationTitle("Explore")
         }
     }
 }
 
-struct BacktestView: View {
+struct StrategyDetailView: View {
     @EnvironmentObject private var store: AppStore
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+                    SubscribeCard(strategy: store.selectedStrategy) {
+                        store.subscribeSelectedStrategy()
+                    }
+                    TrustCard(strategy: store.selectedStrategy)
+                    ExplanationCard(strategy: store.selectedStrategy)
                     ChartCard(strategy: store.selectedStrategy)
-                    MetricsStrip(strategy: store.selectedStrategy)
-                    SignalCard(strategy: store.selectedStrategy)
+                    AllocationSection(strategy: store.selectedStrategy)
+                    RiskSection(strategy: store.selectedStrategy)
                 }
                 .padding()
             }
             .background(Color.appGroupedBackground)
-            .navigationTitle("Backtest")
+            .navigationTitle("Detail")
+        }
+    }
+}
+
+struct TrustCard: View {
+    let strategy: Strategy
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading) {
+                    Text("Trust score")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text("\(strategy.trustScore)")
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(.teal)
+                }
+                Spacer()
+                Text(strategy.isVerified ? "Platform reviewed" : "Review pending")
+                    .font(.caption.bold())
+                    .foregroundStyle(strategy.isVerified ? .green : .secondary)
+            }
+            Text(strategy.creatorBio)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            ChecklistContent(items: strategy.verificationItems)
+        }
+        .cardStyle()
+    }
+}
+
+struct CreatorStudioView: View {
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Publish your strategy")
+                            .font(.title2.bold())
+                        Text("Upload the strategy explanation, reproducible backtest, rebalance frequency, and risk disclosure. The platform handles discovery, subscriptions, reminders, and signal delivery.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Text("Platform fee 20% / Creator share 80%")
+                            .font(.headline)
+                            .foregroundStyle(.teal)
+                    }
+                    .cardStyle()
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+                        MetricTile(title: "Example Price", value: "CNY 99")
+                        MetricTile(title: "Subscribers", value: "300")
+                        MetricTile(title: "Platform", value: "CNY 5,940")
+                        MetricTile(title: "Creator", value: "CNY 23,760")
+                    }
+
+                    ChecklistCard(
+                        title: "Review checklist",
+                        items: [
+                            "Reproducible config and out-of-sample curve",
+                            "Plain-language strategy explanation",
+                            "Drawdown, turnover, and failure scenarios",
+                            "Daily or weekly signal delivery interface"
+                        ]
+                    )
+                }
+                .padding()
+            }
+            .background(Color.appGroupedBackground)
+            .navigationTitle("Studio")
         }
     }
 }
@@ -115,6 +186,12 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Daily rebalance reminder") {
+                    TextField("Plan capital", value: $store.profile.capital, format: .number)
+                    Picker("Risk preference", selection: $store.profile.risk) {
+                        ForEach(RiskPreference.allCases) { risk in
+                            Text(risk.title).tag(risk)
+                        }
+                    }
                     DatePicker("Reminder time", selection: reminderBinding, displayedComponents: .hourAndMinute)
 
                     Button {
@@ -126,6 +203,13 @@ struct SettingsView: View {
                     }
 
                     Text(store.notificationStatusText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Account") {
+                    Text("Subscribed strategies: \(store.subscribedCount)")
+                    Text("Broker execution is outside this demo. Backtests do not guarantee future returns.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -142,11 +226,46 @@ struct SettingsView: View {
     }
 }
 
+struct RecommendationCard: View {
+    @EnvironmentObject private var store: AppStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Recommended for \(store.profile.risk.title)")
+                    .font(.headline)
+                Spacer()
+                Text(store.profile.capital.currencyText)
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+            Text(store.recommendationReason)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("Use recommended strategy") {
+                store.applyRecommendation()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+        }
+        .cardStyle()
+    }
+}
+
 struct StrategyHeader: View {
     let strategy: Strategy
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(strategy.isSubscribed ? "Subscribed" : "Not subscribed")
+                    .font(.caption.bold())
+                    .foregroundStyle(strategy.isSubscribed ? .green : .secondary)
+                Spacer()
+                Text("CNY \(strategy.monthlyPrice)/mo")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
             Text(strategy.name)
                 .font(.title.bold())
             Text(strategy.subtitle)
@@ -155,11 +274,11 @@ struct StrategyHeader: View {
             Text(strategy.latestSignal)
                 .font(.headline)
                 .foregroundStyle(.teal)
+            Text(strategy.plainSummary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardStyle()
     }
 }
 
@@ -171,7 +290,7 @@ struct MetricsStrip: View {
             MetricTile(title: "Annualized", value: strategy.annualReturn.percentText)
             MetricTile(title: "Max DD", value: strategy.maxDrawdown.percentText)
             MetricTile(title: "Sharpe", value: String(format: "%.2f", strategy.sharpe))
-            MetricTile(title: "Volatility", value: strategy.volatility.percentText)
+            MetricTile(title: "Monthly", value: "CNY \(strategy.monthlyPrice)")
         }
     }
 }
@@ -189,10 +308,7 @@ struct MetricTile: View {
                 .font(.title3.bold())
                 .minimumScaleFactor(0.75)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardStyle()
     }
 }
 
@@ -213,9 +329,91 @@ struct ReminderBanner: View {
             }
             Spacer()
         }
-        .padding()
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardStyle()
+    }
+}
+
+struct MarketplaceCard: View {
+    let strategy: Strategy
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(strategy.isVerified ? "Verified" : "Pending")
+                        .font(.caption.bold())
+                        .foregroundStyle(strategy.isVerified ? .green : .secondary)
+                    Spacer()
+                    Text("CNY \(strategy.monthlyPrice)/mo")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                }
+                Text(strategy.name)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(strategy.fit)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Text(strategy.annualReturn.percentText)
+                    Text(strategy.maxDrawdown.percentText)
+                    Text("\(strategy.subscriberCount) subscribers")
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(.background)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(isSelected ? Color.teal : Color.clear, lineWidth: 2)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct SubscribeCard: View {
+    let strategy: Strategy
+    let onSubscribe: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(strategy.creator)
+                .font(.caption.bold())
+                .foregroundStyle(.secondary)
+            Text(strategy.fit)
+                .font(.title3.bold())
+            Text(strategy.subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button(action: onSubscribe) {
+                Label(strategy.isSubscribed ? "Subscribed" : "Subscribe CNY \(strategy.monthlyPrice)/mo", systemImage: "checkmark.seal")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.teal)
+        }
+        .cardStyle()
+    }
+}
+
+struct ExplanationCard: View {
+    let strategy: Strategy
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Strategy principle")
+                .font(.headline)
+            Text(strategy.principle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            ChecklistContent(items: strategy.deliverables)
+        }
+        .cardStyle()
     }
 }
 
@@ -230,9 +428,7 @@ struct OrdersSection: View {
                 OrderRow(order: order)
             }
         }
-        .padding()
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardStyle()
     }
 }
 
@@ -265,6 +461,21 @@ struct OrderRow: View {
     }
 }
 
+struct AllocationSection: View {
+    let strategy: Strategy
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Target allocation")
+                .font(.headline)
+            ForEach(strategy.allocation) { item in
+                AllocationRow(allocation: item)
+            }
+        }
+        .cardStyle()
+    }
+}
+
 struct AllocationRow: View {
     let allocation: Allocation
 
@@ -294,7 +505,7 @@ struct ChartCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(strategy.name)
+            Text("Backtest curve")
                 .font(.headline)
             Chart {
                 ForEach(strategy.curve) { point in
@@ -305,31 +516,50 @@ struct ChartCard: View {
                 }
             }
             .chartYScale(domain: .automatic(includesZero: false))
-            .frame(height: 240)
+            .frame(height: 220)
+            Text("Historical backtests do not guarantee future returns. Slippage, fees, and execution price can affect results.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .padding()
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardStyle()
     }
 }
 
-struct SignalCard: View {
+struct RiskSection: View {
     let strategy: Strategy
 
     var body: some View {
+        ChecklistCard(title: "Main risks", items: strategy.riskItems + [strategy.riskNote])
+    }
+}
+
+struct ChecklistCard: View {
+    let title: String
+    let items: [String]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Latest Signal")
+            Text(title)
                 .font(.headline)
-            Text(strategy.latestSignal)
-                .foregroundStyle(.primary)
-            Text(strategy.riskNote)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            ChecklistContent(items: items)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .cardStyle()
+    }
+}
+
+struct ChecklistContent: View {
+    let items: [String]
+
+    var body: some View {
+        ForEach(items, id: \.self) { item in
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.teal)
+                Text(item)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
@@ -345,4 +575,14 @@ private extension Double {
 
 private extension Color {
     static let appGroupedBackground = Color(red: 0.94, green: 0.96, blue: 0.97)
+}
+
+private extension View {
+    func cardStyle() -> some View {
+        self
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(.background)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
 }

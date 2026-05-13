@@ -35,13 +35,26 @@ struct RebalanceOrder: Identifiable {
 struct Strategy: Identifiable {
     let id: String
     let name: String
+    let creator: String
+    let isVerified: Bool
+    var isSubscribed: Bool
+    let monthlyPrice: Int
+    let subscriberCount: Int
+    let trustScore: Int
+    let creatorBio: String
+    let verificationItems: [String]
+    let fit: String
     let subtitle: String
     let annualReturn: Double
     let maxDrawdown: Double
     let sharpe: Double
     let volatility: Double
     let latestSignal: String
+    let plainSummary: String
+    let principle: String
+    let deliverables: [String]
     let riskNote: String
+    let riskItems: [String]
     let allocation: [Allocation]
     let orders: [RebalanceOrder]
     let curve: [BacktestPoint]
@@ -55,4 +68,28 @@ struct ReminderState {
     var formattedTime: String {
         String(format: "%02d:%02d", hour, minute)
     }
+}
+
+enum RiskPreference: String, CaseIterable, Identifiable {
+    case conservative
+    case balanced
+    case growth
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .conservative:
+            return "Conservative"
+        case .balanced:
+            return "Balanced"
+        case .growth:
+            return "Growth"
+        }
+    }
+}
+
+struct InvestorProfile {
+    var capital: Double
+    var risk: RiskPreference
 }
