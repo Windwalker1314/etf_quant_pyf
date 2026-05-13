@@ -1,0 +1,397 @@
+:root {
+  color-scheme: light;
+  --ink: #18212b;
+  --muted: #667085;
+  --line: #dde3ea;
+  --paper: #ffffff;
+  --wash: #eef3f6;
+  --teal: #087f8c;
+  --green: #25805c;
+  --red: #ba4a48;
+  --orange: #d17a22;
+  --blue: #4769b2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(135deg, rgba(8, 127, 140, 0.14), rgba(209, 122, 34, 0.08)),
+    #e8edf1;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ink);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.phone-shell {
+  width: min(100vw, 430px);
+  height: min(100vh, 880px);
+  min-height: 760px;
+  position: relative;
+  overflow: hidden;
+  background: var(--wash);
+  border: 1px solid rgba(24, 33, 43, 0.14);
+  border-radius: 34px;
+  box-shadow: 0 28px 80px rgba(24, 33, 43, 0.18);
+}
+
+.screen {
+  height: calc(100% - 76px);
+  overflow: auto;
+  padding: 22px 18px 18px;
+}
+
+.hidden {
+  display: none;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.topbar.compact {
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 29px;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+h2 {
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.icon-button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 10px 24px rgba(24, 33, 43, 0.08);
+}
+
+.signal-panel,
+.card,
+.metric-grid article,
+.strategy-button {
+  background: var(--paper);
+  border: 1px solid rgba(24, 33, 43, 0.08);
+  border-radius: 8px;
+}
+
+.signal-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.signal-panel div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.signal-panel strong {
+  font-size: 18px;
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.metric-grid article {
+  padding: 13px;
+}
+
+.metric-grid span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.metric-grid strong {
+  display: block;
+  font-size: 22px;
+}
+
+.card {
+  padding: 15px;
+  margin-bottom: 12px;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.section-head span {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.chart-card canvas {
+  display: block;
+  width: 100%;
+  height: 190px;
+}
+
+.orders-list,
+.allocation-list,
+.strategy-list {
+  display: grid;
+  gap: 10px;
+}
+
+.order-row,
+.allocation-row {
+  display: grid;
+  gap: 8px;
+}
+
+.order-row {
+  grid-template-columns: 50px 1fr auto;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.order-row:first-child {
+  border-top: 0;
+}
+
+.side {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.side.buy {
+  color: var(--green);
+}
+
+.side.sell {
+  color: var(--red);
+}
+
+.side.hold {
+  color: var(--muted);
+}
+
+.symbol {
+  font-weight: 800;
+}
+
+.name,
+.subtext,
+.body-copy {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.amount {
+  text-align: right;
+  font-weight: 800;
+}
+
+.strategy-button {
+  width: 100%;
+  text-align: left;
+  padding: 14px;
+  border-color: rgba(24, 33, 43, 0.08);
+}
+
+.strategy-button.active {
+  border-color: rgba(8, 127, 140, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(8, 127, 140, 0.45);
+}
+
+.strategy-button strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+
+.strategy-meta {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.allocation-row {
+  padding: 2px 0 8px;
+}
+
+.allocation-row header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bar {
+  height: 9px;
+  overflow: hidden;
+  background: #e4e9ee;
+  border-radius: 999px;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  background: var(--teal);
+}
+
+.settings-card {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-card label {
+  font-weight: 800;
+}
+
+.settings-card input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafb;
+}
+
+.settings-card button {
+  border: 0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--teal);
+  color: #fff;
+  font-weight: 800;
+}
+
+.settings-card p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tabbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 76px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid rgba(24, 33, 43, 0.08);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.tabbar button {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 22px;
+}
+
+.tabbar button span {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tabbar button.active {
+  color: var(--teal);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%) translateY(20px);
+  opacity: 0;
+  pointer-events: none;
+  background: #15212d;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  transition: 180ms ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 460px) {
+  body {
+    display: block;
+    background: var(--wash);
+  }
+
+  .phone-shell {
+    width: 100vw;
+    height: 100vh;
+    min-height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

@@ -81,6 +81,22 @@ scripts/app.sh
 
 然后打开 <http://127.0.0.1:8765>。界面会自动读取 `configs/*hybrid*.yaml` 作为可选策略，默认使用 `configs/bigquant_rotation_hybrid_candidate_turnover.yaml`。持仓和现金保存到 `data/live/positions.csv`，每天早上点“生成计划”即可生成调仓动作。设置会记在 `data/live/app_state.json`。
 
+## iOS App Demo
+
+当前分支包含一个 ETF Quant iOS 产品 demo：
+
+- 产品设计：`docs/product/ios_quant_app_demo.md`
+- 原生 SwiftUI 工程：`ios/ETFQuantApp/ETFQuantApp.xcodeproj`
+- 无需 Xcode 的移动端预览：`demos/ios-mobile/index.html`
+
+本机如果还没有完整 Xcode，可以先启动浏览器预览：
+
+```bash
+python3 -m http.server 8877 --directory demos/ios-mobile
+```
+
+然后打开 <http://127.0.0.1:8877>。原生工程内置了策略选择、每日调仓提醒、回测曲线和调仓计划预览，后续可以把 demo 数据仓库替换为现有 Python 服务 API。
+
 开盘前生成交易计划：
 
 ```bash
