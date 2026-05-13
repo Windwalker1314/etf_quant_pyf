@@ -20,12 +20,107 @@ PYTHONPATH=src python3 -m etf_quant.cli walk-forward --config configs/walk_forwa
 PYTHONPATH=src python3 -m etf_quant.cli rebalance --config configs/rebalance.yaml
 ```
 
-输出会写入 `outputs/`：
+## Conda 环境
 
-- `equity_curve.csv`
-- `metrics.yaml`
-- `equity_curve.png`
-- `rebalance_plan.csv`
+推荐使用项目内 conda 环境，避免污染系统 Python：
+
+```bash
+conda create -y -p ./.conda/etf-quant python=3.11 pip pandas numpy matplotlib pyyaml
+.conda/etf-quant/bin/python -m pip install akshare tushare
+```
+
+之后运行命令时使用：
+
+```bash
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli backtest --config configs/backtest.yaml
+```
+
+## 真实数据源
+
+项目已接入三个数据源：
+
+- `yahoo`：无需额外依赖，适合海外 ETF 和部分 A 股/H 股 ETF。
+- `akshare`：适合国内 ETF/LOF，无需 token；当前配置会优先用东方财富线路，失败后 fallback 到新浪 ETF 日线。
+- `tushare`：适合更稳定的数据生产环境；需要 Tushare token。
+
+下载 AkShare 数据并回测：
+
+```bash
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli download-data --config configs/bigquant_rotation_akshare.yaml
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli validate-data --config configs/bigquant_rotation_akshare.yaml
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli backtest --config configs/bigquant_rotation_akshare.yaml
+```
+
+注意：AkShare 东方财富线路在网络不可用时会 fallback 到新浪 ETF 日线。新浪数据可能是未复权口径，QDII ETF 在拆分/折算日会出现异常跳变；正式回测前请先运行 `validate-data`。
+
+下载 Tushare 数据并回测：
+
+```bash
+export TUSHARE_TOKEN=你的token
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli download-data --config configs/bigquant_rotation_tushare.yaml
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli backtest --config configs/bigquant_rotation_tushare.yaml
+```
+
+输出会写入 `outputs/`，并按用途归类：
+
+- `outputs/strategies/`：正式策略输出。
+- `outputs/baselines/`：基准策略输出。
+- `outputs/experiments/`：候选参数、sweep 搜索等实验输出。
+- `outputs/global/`：全球 ETF 长历史实验输出。
+- `outputs/archive/`：早期通用样例输出。
+
+常见文件包括 `equity_curve.csv`、`metrics.yaml`、`equity_curve.png`、`weights.csv` 和 `rebalance_plan.csv`。具体目录约定见 `outputs/README.md`。
+
+## 每日实盘预演
+
+如果想用本地小程序操作，启动：
+
+```bash
+scripts/app.sh
+```
+
+然后打开 <http://127.0.0.1:8765>。界面会自动读取 `configs/*hybrid*.yaml` 作为可选策略，默认使用 `configs/bigquant_rotation_hybrid_candidate_turnover.yaml`。持仓和现金保存到 `data/live/positions.csv`，每天早上点“生成计划”即可生成调仓动作。设置会记在 `data/live/app_state.json`。
+
+开盘前生成交易计划：
+
+```bash
+cp data/live/positions_example.csv data/live/positions.csv
+# 编辑 data/live/positions.csv，填入当前持仓份额和现金。
+scripts/live_plan.sh
+```
+
+脚本默认会：
+
+- 用 `configs/bigquant_rotation_hybrid_candidate_turnover.yaml` 读取 hybrid 口径行情。
+- 读取 `data/live/positions.csv`。
+- 按 100 份整手取整。
+- 输出到 `outputs/live/bigquant_rotation_hybrid_candidate_turnover/`。
+
+输出文件：
+
+- `live_rebalance_plan.md`：适合开盘前阅读的交易计划。
+- `live_rebalance_plan.csv`：适合复制、检查或后续接券商接口的结构化计划。
+
+也可以直接跑 CLI：
+
+```bash
+PYTHONPATH=src .conda/etf-quant/bin/python -m etf_quant.cli live-plan \
+  --config configs/bigquant_rotation_hybrid_candidate_turnover.yaml \
+  --positions data/live/positions.csv \
+  --lot-size 100 \
+  --min-trade-value 0
+```
+
+`positions.csv` 格式：
+
+```csv
+symbol,shares,cash
+513600.SH,10000,
+518880.SH,2000,
+CASH,0,150000
+```
+
+其中 `shares` 是当前持仓份额，`CASH` 行的 `cash` 是可用现金。报告中的交易价格默认使用最新一根日线收盘价估算，实际下单仍需按开盘价/盘口手动确认。
 
 ## 扩展策略
 

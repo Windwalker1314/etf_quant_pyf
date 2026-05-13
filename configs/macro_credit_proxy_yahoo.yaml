@@ -1,0 +1,33 @@
+universe:
+  - symbol: HYG
+    name: High Yield Corporate Bond ETF
+    asset_class: credit
+    currency: USD
+  - symbol: LQD
+    name: Investment Grade Corporate Bond ETF
+    asset_class: credit
+    currency: USD
+
+data:
+  source: yahoo
+  path: ../data/raw/macro/credit_proxy_yahoo_prices.csv
+  start: "2006-02-06"
+  end: "2026-05-11"
+  params:
+    sleep_seconds: 0.2
+
+factors: []
+
+strategy:
+  name: equal_weight
+  params:
+    symbols: [HYG, LQD]
+
+backtest:
+  initial_cash: 150000
+  commission_bps: 0
+  slippage_bps: 0
+  rebalance: M
+  execution: next_open
+
+output_dir: ../outputs/experiments/macro_data/credit_proxy_yahoo

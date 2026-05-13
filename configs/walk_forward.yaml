@@ -73,4 +73,4 @@ walk_forward:
   step_months: 6
   mode: rolling
 
-output_dir: ../outputs/walk_forward
+output_dir: ../outputs/archive/walk_forward

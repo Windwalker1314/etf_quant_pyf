@@ -43,8 +43,13 @@ def generate_sample_prices(
     return pd.DataFrame(rows)
 
 
-def write_sample_prices(path: str | Path, assets: Iterable[Asset]) -> Path:
+def write_sample_prices(
+    path: str | Path,
+    assets: Iterable[Asset],
+    start: str = "2018-01-01",
+    end: str = "2024-12-31",
+) -> Path:
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
-    generate_sample_prices(assets).to_csv(output, index=False)
+    generate_sample_prices(assets, start=start, end=end).to_csv(output, index=False)
     return output

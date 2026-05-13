@@ -19,6 +19,7 @@ class DataConfig:
     path: Optional[Path] = None
     start: Optional[str] = None
     end: Optional[str] = None
+    params: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

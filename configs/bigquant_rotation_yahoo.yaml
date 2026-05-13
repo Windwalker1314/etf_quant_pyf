@@ -1,0 +1,77 @@
+universe:
+  - symbol: 160723.SZ
+    name: 嘉实原油
+    asset_class: commodity
+    currency: CNY
+  - symbol: 513100.SH
+    name: 纳指ETF
+    asset_class: us_equity
+    currency: CNY
+  - symbol: 159985.SZ
+    name: 豆粕ETF
+    asset_class: commodity
+    currency: CNY
+  - symbol: 513500.SH
+    name: 标普500ETF
+    asset_class: us_equity
+    currency: CNY
+  - symbol: 518880.SH
+    name: 黄金ETF
+    asset_class: commodity
+    currency: CNY
+  - symbol: 513130.SH
+    name: 恒生科技ETF
+    asset_class: hk_equity
+    currency: CNY
+  - symbol: 510300.SH
+    name: 沪深300ETF
+    asset_class: cn_equity
+    currency: CNY
+  - symbol: 159915.SZ
+    name: 创业板ETF
+    asset_class: cn_equity
+    currency: CNY
+  - symbol: 513600.SH
+    name: 恒生指数ETF
+    asset_class: hk_equity
+    currency: CNY
+
+data:
+  source: yahoo
+  path: ../data/raw/bigquant_yahoo_prices.csv
+  start: "2020-01-01"
+  end: "2026-05-11"
+  params:
+    sleep_seconds: 0.2
+
+factors:
+  - name: bigquant_rotation
+    params:
+      trend_period: 25
+      inv_vol_window: 30
+      weight_clip_pct: 0.90
+
+strategy:
+  name: bigquant_rotation
+  params:
+    hold_num: 2
+    rebalance_weekday: null
+    score_gap_base: 0.10
+    gap_coef: 0.35
+    gap_floor: 0.10
+    change_threshold: 0.10
+    trail_stop_pct: 0.06
+    hard_stop_pct: 0.06
+    take_profit_pct: 0.40
+    cool_days: 3
+    use_inv_vol_weight: true
+    max_cluster_weight: 0.80
+
+backtest:
+  initial_cash: 150000
+  commission_bps: 13
+  slippage_bps: 0
+  rebalance: D
+  execution: next_open
+
+output_dir: ../outputs/strategies/bigquant_rotation/yahoo

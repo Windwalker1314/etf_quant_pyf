@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from etf_quant.backtest.metrics import summarize_performance
+from etf_quant.backtest.metrics import summarize_performance, summarize_portfolio_behavior
 from etf_quant.config.schema import BacktestConfig
 from etf_quant.data.dataset import MarketData
 from etf_quant.factors.library import compute_factor_panel
@@ -31,10 +31,21 @@ class BacktestEngine:
     def __init__(self, config: BacktestConfig):
         self.config = config
 
-    def run(self, market_data: MarketData, factor_configs, strategy: Strategy) -> BacktestResult:
-        factor_data = compute_factor_panel(market_data, factor_configs)
+    def run(
+        self,
+        market_data: MarketData,
+        factor_configs,
+        strategy: Strategy,
+        factor_data: dict[str, pd.DataFrame] | None = None,
+    ) -> BacktestResult:
+        if factor_data is None:
+            factor_data = compute_factor_panel(market_data, factor_configs)
         close = market_data.close_wide()
-        returns = close.pct_change().fillna(0.0)
+        open_ = market_data.open_wide()
+        if self.config.execution == "next_open":
+            returns = self._next_open_returns(open_)
+        else:
+            returns = close.pct_change().fillna(0.0)
         dates = close.index
         rebal_dates = set(_rebalance_dates(dates, self.config.rebalance))
         weights = pd.DataFrame(0.0, index=dates, columns=close.columns)
@@ -42,11 +53,7 @@ class BacktestEngine:
         current_weights = pd.Series(0.0, index=close.columns)
         for date in dates:
             if date in rebal_dates:
-                visible_data = market_data.slice(end=date)
-                visible_factors = {
-                    factor_name: values.loc[:date] for factor_name, values in factor_data.items()
-                }
-                current_weights = strategy.generate_weights(date, visible_data, visible_factors)
+                current_weights = strategy.generate_weights(date, market_data, factor_data)
                 current_weights = current_weights.reindex(close.columns).fillna(0.0)
             weights.loc[date] = current_weights
 
@@ -56,11 +63,19 @@ class BacktestEngine:
         cost_rate = (self.config.commission_bps + self.config.slippage_bps) / 10_000
         net_returns = gross_returns - turnover * cost_rate
         equity = (1.0 + net_returns).cumprod() * self.config.initial_cash
+        metrics = summarize_performance(equity)
+        metrics.update(summarize_portfolio_behavior(weights, turnover))
 
         return BacktestResult(
             equity_curve=equity.rename("equity"),
             daily_returns=net_returns.rename("return"),
             weights=weights,
             turnover=turnover.rename("turnover"),
-            metrics=summarize_performance(equity),
+            metrics=metrics,
         )
+
+    @staticmethod
+    def _next_open_returns(open_: pd.DataFrame) -> pd.DataFrame:
+        sell_price = open_.shift(-1)
+        buy_price = open_
+        return (sell_price / buy_price - 1.0).fillna(0.0)

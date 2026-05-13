@@ -66,4 +66,4 @@ backtest:
   rebalance: M
   execution: next_close
 
-output_dir: ../outputs/rebalance
+output_dir: ../outputs/archive/rebalance

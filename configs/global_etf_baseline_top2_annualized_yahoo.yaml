@@ -1,0 +1,69 @@
+universe:
+  - symbol: SPY
+    name: S&P 500 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: QQQ
+    name: Nasdaq 100 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: IWM
+    name: Russell 2000 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: EFA
+    name: Developed Markets ETF
+    asset_class: developed_equity
+    currency: USD
+  - symbol: EEM
+    name: Emerging Markets ETF
+    asset_class: emerging_equity
+    currency: USD
+  - symbol: FXI
+    name: China Large-Cap ETF
+    asset_class: cn_equity
+    currency: USD
+  - symbol: GLD
+    name: Gold ETF
+    asset_class: commodity
+    currency: USD
+  - symbol: DBC
+    name: Broad Commodity ETF
+    asset_class: commodity
+    currency: USD
+  - symbol: TLT
+    name: Long Treasury ETF
+    asset_class: bond
+    currency: USD
+  - symbol: IEF
+    name: 7-10 Year Treasury ETF
+    asset_class: bond
+    currency: USD
+  - symbol: VNQ
+    name: US REIT ETF
+    asset_class: real_estate
+    currency: USD
+
+data:
+  source: yahoo
+  path: ../data/raw/global_etf_yahoo_prices.csv
+  start: "2006-02-06"
+  end: "2026-05-11"
+  params:
+    sleep_seconds: 0.2
+
+factors: []
+
+strategy:
+  name: top_annualized_return
+  params:
+    top_n: 2
+
+backtest:
+  initial_cash: 150000
+  commission_bps: 3
+  slippage_bps: 1
+  rebalance: D
+  execution: next_open
+
+output_dir: ../outputs/global/baselines/top2_annualized_yahoo
