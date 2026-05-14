@@ -7,6 +7,7 @@
   --soft: #f5f7fa;
   --accent: #087f8c;
   --accent-strong: #05616c;
+  --warm: #d17a22;
   --buy: #0a7a4b;
   --sell: #b63a35;
   --hold: #667085;
@@ -21,7 +22,8 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  background: #eef2f6;
+  background:
+    linear-gradient(180deg, #eef3f5 0, #f6f8fb 360px, #eef2f6 100%);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -62,6 +64,7 @@ select {
   background: var(--accent);
   font-weight: 800;
   letter-spacing: 0;
+  font-size: 13px;
 }
 
 h1,
@@ -234,6 +237,41 @@ button:disabled {
   border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.backtest-panel {
+  margin-bottom: 14px;
+}
+
+.backtest-panel canvas {
+  display: block;
+  width: 100%;
+  height: 320px;
+}
+
+.backtest-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 86px);
+  gap: 10px;
+}
+
+.backtest-stats div {
+  border: 1px solid #e5eaf0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 9px 10px;
+}
+
+.backtest-stats span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.backtest-stats strong {
+  font-size: 17px;
+  line-height: 1.1;
 }
 
 .metric {
@@ -415,6 +453,10 @@ td input {
   .cash-field {
     width: 100%;
   }
+
+  .backtest-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 620px) {
@@ -437,5 +479,13 @@ td input {
 
   .metric strong {
     font-size: 20px;
+  }
+
+  .backtest-panel canvas {
+    height: 260px;
+  }
+
+  .backtest-stats {
+    grid-template-columns: 1fr;
   }
 }

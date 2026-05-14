@@ -49,6 +49,26 @@ class LiveRebalanceTests(unittest.TestCase):
         self.assertGreaterEqual(plan.portfolio_value, 100000)
         self.assertTrue((plan.plan["trade_shares"] % 100 == 0).all())
 
+    def test_live_plan_accepts_in_memory_current_shares(self):
+        assets = [
+            Asset("AAA", "AAA", "equity"),
+            Asset("BBB", "BBB", "equity"),
+        ]
+        data = MarketData.from_frame(generate_sample_prices(assets, start="2020-01-01", end="2022-12-31"))
+        config = AppConfig(
+            universe=assets,
+            data=DataConfig(source="csv"),
+            factors=[],
+            strategy=StrategyConfig(name="equal_weight"),
+            backtest=BacktestConfig(rebalance="D"),
+        )
+        shares = pd.Series({"AAA": 100.0, "BBB": 0.0})
+
+        plan = build_live_rebalance_plan(config, data, current_shares=shares, cash=10000, lot_size=1)
+
+        self.assertEqual(float(plan.plan.loc[plan.plan["symbol"] == "AAA", "current_shares"].iloc[0]), 100.0)
+        self.assertIn("estimated_shares", plan.plan.columns)
+
 
 if __name__ == "__main__":
     unittest.main()

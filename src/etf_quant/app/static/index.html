@@ -10,10 +10,10 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <span class="brand-mark">EQ</span>
+          <span class="brand-mark">PYF</span>
           <div>
-            <h1>ETF Quant</h1>
-            <p>每日策略工作台</p>
+            <h1>PYF Quant</h1>
+            <p>全球 ETF 实盘工作台</p>
           </div>
         </div>
 
@@ -43,7 +43,7 @@
       <main class="main">
         <section class="topbar">
           <div>
-            <p class="eyebrow">Personal Live Plan</p>
+            <p class="eyebrow">PYF Live Plan</p>
             <h2 id="pageTitle">策略调仓计划</h2>
           </div>
           <div class="actions">
@@ -69,6 +69,21 @@
             <span>交易数量</span>
             <strong id="tradeCount">-</strong>
           </div>
+        </section>
+
+        <section class="panel backtest-panel">
+          <div class="panel-head">
+            <div>
+              <h3>近年回测曲线</h3>
+              <p id="backtestHint">读取策略输出中的最近 5 年净值</p>
+            </div>
+            <div class="backtest-stats">
+              <div><span>年化</span><strong id="btAnnual">-</strong></div>
+              <div><span>夏普</span><strong id="btSharpe">-</strong></div>
+              <div><span>回撤</span><strong id="btDrawdown">-</strong></div>
+            </div>
+          </div>
+          <canvas id="equityChart" width="1100" height="320"></canvas>
         </section>
 
         <section class="work-grid">
@@ -138,4 +153,3 @@
     <script src="/app.js"></script>
   </body>
 </html>
-

@@ -1,0 +1,110 @@
+universe:
+  - symbol: SPY
+    name: S&P 500 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: QQQ
+    name: Nasdaq 100 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: IWM
+    name: Russell 2000 ETF
+    asset_class: us_equity
+    currency: USD
+  - symbol: EFA
+    name: Developed Markets ETF
+    asset_class: developed_equity
+    currency: USD
+  - symbol: EEM
+    name: Emerging Markets ETF
+    asset_class: emerging_equity
+    currency: USD
+  - symbol: FXI
+    name: China Large-Cap ETF
+    asset_class: cn_equity
+    currency: USD
+  - symbol: GLD
+    name: Gold ETF
+    asset_class: commodity
+    currency: USD
+  - symbol: DBC
+    name: Broad Commodity ETF
+    asset_class: commodity
+    currency: USD
+  - symbol: TLT
+    name: Long Treasury ETF
+    asset_class: bond
+    currency: USD
+  - symbol: IEF
+    name: 7-10 Year Treasury ETF
+    asset_class: bond
+    currency: USD
+  - symbol: VNQ
+    name: US REIT ETF
+    asset_class: real_estate
+    currency: USD
+
+data:
+  source: yahoo
+  path: ../data/raw/global_etf_yahoo_prices.csv
+  start: "2006-02-06"
+  end: "2026-05-11"
+  params:
+    sleep_seconds: 0.2
+
+factors:
+  - name: bigquant_rotation
+    params:
+      trend_period: 25
+      inv_vol_window: 30
+      weight_clip_pct: 0.90
+
+strategy:
+  name: bigquant_rotation
+  params:
+    hold_num: 2
+    rebalance_weekday: null
+    score_gap_base: 0.10
+    gap_coef: 0.35
+    gap_floor: 0.10
+    change_threshold: 0.12
+    trail_stop_pct: 0.06
+    hard_stop_pct: 0.06
+    take_profit_pct: 0.18
+    cool_days: 3
+    use_inv_vol_weight: true
+    score_smoothing_window: 3
+    max_cluster_weight: 1.00
+    specified_etfs:
+      - SPY
+      - QQQ
+      - IWM
+      - EFA
+      - EEM
+      - FXI
+      - GLD
+      - DBC
+      - TLT
+      - IEF
+      - VNQ
+    clusters:
+      US: [SPY, QQQ, IWM, VNQ]
+      GLOBAL: [EFA, EEM, FXI]
+      ALT: [GLD, DBC]
+      BOND: [TLT, IEF]
+
+backtest:
+  initial_cash: 150000
+  commission_bps: 3
+  slippage_bps: 1
+  rebalance: D
+  execution: next_open
+
+walk_forward:
+  train_months: 60
+  validation_months: 12
+  test_months: 12
+  step_months: 12
+  mode: rolling
+
+output_dir: ../outputs/global/strategies/pyf_global_etf_rotation_yahoo

@@ -70,6 +70,7 @@ def build_live_rebalance_plan(
     config: AppConfig,
     market_data: MarketData,
     positions_path: str | Path | None = None,
+    current_shares: pd.Series | None = None,
     cash: float | None = None,
     lot_size: int = 100,
     min_trade_value: float = 0.0,
@@ -78,7 +79,11 @@ def build_live_rebalance_plan(
     as_of_date = close.index.max()
     latest_price = close.loc[as_of_date]
     symbols = close.columns.tolist()
-    shares, file_cash = load_positions(positions_path, symbols)
+    if current_shares is None:
+        shares, file_cash = load_positions(positions_path, symbols)
+    else:
+        shares = current_shares.reindex(symbols).fillna(0.0)
+        file_cash = 0.0
     if cash is None:
         cash_value = file_cash
     else:

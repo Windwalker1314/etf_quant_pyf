@@ -1,6 +1,6 @@
 {
   "lot_size": 100,
   "min_trade_value": 0.0,
-  "refresh_data": false,
-  "selected_config": "configs/bigquant_rotation_hybrid_candidate_turnover.yaml"
+  "refresh_data": true,
+  "selected_config": "configs/bigquant_rotation_hybrid_candidate_take_profit.yaml"
 }
