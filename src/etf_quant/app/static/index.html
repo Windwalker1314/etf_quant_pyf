@@ -69,6 +69,31 @@
             <span>交易数量</span>
             <strong id="tradeCount">-</strong>
           </div>
+          <div class="metric">
+            <span>本次收益</span>
+            <strong id="perfDaily">-</strong>
+          </div>
+          <div class="metric">
+            <span>累计收益</span>
+            <strong id="perfCum">-</strong>
+          </div>
+        </section>
+
+        <section class="decision-strip">
+          <div>
+            <h3 id="actionTitle">先生成今日计划</h3>
+            <p id="actionDetail">录入真实持仓和现金后，生成计划会给出今日买卖、目标仓位和收益跟踪。</p>
+          </div>
+          <dl>
+            <div>
+              <dt>行情日期</dt>
+              <dd id="latestDataDate">-</dd>
+            </div>
+            <div>
+              <dt>跟踪记录</dt>
+              <dd id="perfCount">-</dd>
+            </div>
+          </dl>
         </section>
 
         <section class="panel backtest-panel">
@@ -126,6 +151,33 @@
         <section class="panel">
           <div class="panel-head">
             <div>
+              <h3>目标仓位</h3>
+              <p id="targetHint">生成计划后展示预计调仓结果；当前持仓输入不会被自动覆盖</p>
+            </div>
+            <div class="projected-cash">
+              <span>预计现金</span>
+              <strong id="projectedCash">-</strong>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>标的</th>
+                  <th class="num">当前权重</th>
+                  <th class="num">目标权重</th>
+                  <th class="num">预计权重</th>
+                  <th class="num">预计份额</th>
+                </tr>
+              </thead>
+              <tbody id="targetBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
               <h3>调仓动作</h3>
               <p id="orderHint">尚未生成今日计划</p>
             </div>
@@ -134,7 +186,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>代码</th>
+                  <th>标的</th>
                   <th>方向</th>
                   <th class="num">交易份额</th>
                   <th class="num">估算价格</th>
@@ -143,6 +195,30 @@
                 </tr>
               </thead>
               <tbody id="ordersBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel performance-panel">
+          <div class="panel-head">
+            <div>
+              <h3>实盘收益跟踪</h3>
+              <p id="performanceHint">每次生成计划时，按当前录入持仓和最新收盘价记录组合市值</p>
+            </div>
+          </div>
+          <canvas id="performanceChart" width="1100" height="260"></canvas>
+          <div class="table-wrap compact-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th class="num">组合市值</th>
+                  <th class="num">现金</th>
+                  <th class="num">日收益</th>
+                  <th class="num">累计收益</th>
+                </tr>
+              </thead>
+              <tbody id="performanceBody"></tbody>
             </table>
           </div>
         </section>

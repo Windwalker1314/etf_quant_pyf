@@ -226,9 +226,65 @@ button:disabled {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 14px;
+}
+
+.decision-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #17202a;
+  color: white;
+  min-height: 92px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+.decision-strip h3 {
+  margin-bottom: 6px;
+  font-size: 19px;
+}
+
+.decision-strip p,
+.decision-strip dt {
+  color: #c9d3df;
+}
+
+.decision-strip p {
+  max-width: 760px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.decision-strip dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.decision-strip div,
+.decision-strip dd,
+.decision-strip dt {
+  min-width: 0;
+}
+
+.decision-strip dt {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.decision-strip dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .metric,
@@ -243,10 +299,19 @@ button:disabled {
   margin-bottom: 14px;
 }
 
-.backtest-panel canvas {
+.backtest-panel canvas,
+.performance-panel canvas {
   display: block;
   width: 100%;
   height: 320px;
+}
+
+.performance-panel {
+  margin-top: 14px;
+}
+
+.performance-panel canvas {
+  height: 260px;
 }
 
 .backtest-stats {
@@ -325,12 +390,32 @@ button:disabled {
   font-size: 12px;
 }
 
+.projected-cash {
+  display: grid;
+  gap: 5px;
+  min-width: 128px;
+  text-align: right;
+}
+
+.projected-cash span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.projected-cash strong {
+  font-size: 18px;
+}
+
 .cash-field input {
   min-height: 36px;
 }
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.compact-table table {
+  table-layout: auto;
 }
 
 table {
@@ -438,13 +523,17 @@ td input {
     border-bottom: 1px solid var(--line);
   }
 
-  .summary-grid,
+  .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .work-grid {
     grid-template-columns: 1fr;
   }
 
   .topbar,
-  .panel-head {
+  .panel-head,
+  .decision-strip {
     align-items: stretch;
     flex-direction: column;
   }
@@ -456,6 +545,14 @@ td input {
 
   .backtest-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .decision-strip dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .projected-cash {
+    text-align: left;
   }
 }
 
@@ -481,7 +578,8 @@ td input {
     font-size: 20px;
   }
 
-  .backtest-panel canvas {
+  .backtest-panel canvas,
+  .performance-panel canvas {
     height: 260px;
   }
 

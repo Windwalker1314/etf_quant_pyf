@@ -2,5 +2,381 @@
   "lot_size": 100,
   "min_trade_value": 0.0,
   "refresh_data": true,
-  "selected_config": "configs/bigquant_rotation_hybrid_candidate_take_profit.yaml"
+  "selected_config": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+  "last_plan": {
+    "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+    "strategy": {
+      "path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+      "label": "短线Sharpe最优：国内Hybrid轮动",
+      "strategy_name": "bigquant_rotation",
+      "display_name": "短线Sharpe最优：国内Hybrid轮动",
+      "data_source": "hybrid",
+      "can_refresh": true,
+      "universe_size": 9,
+      "date_range": "2020-01-02 - 2026-05-29",
+      "configured_date_range": "2020-01-01 - 2026-05-11",
+      "actual_date_range": "2020-01-02 - 2026-05-29",
+      "output_dir": "/Users/bytedance/Documents/pyf_project/etf_quant/outputs/experiments/bigquant_rotation/hybrid_position_cap"
+    },
+    "performance": {
+      "path": "/Users/bytedance/Documents/pyf_project/etf_quant/data/live/performance_log.csv",
+      "days": 90,
+      "records": [
+        {
+          "date": "2026-05-15",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 148342.59328842163,
+          "cash": 430.5999279022217,
+          "daily_return": 0.0,
+          "cumulative_return": 0.0,
+          "latest_data_date": "2026-05-15",
+          "refresh_data": true,
+          "recorded_at": "2026-05-18T01:19:19+00:00"
+        },
+        {
+          "date": "2026-05-18",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 148342.59328842163,
+          "cash": 430.5999279022217,
+          "daily_return": 0.0,
+          "cumulative_return": 0.0,
+          "latest_data_date": "2026-05-18",
+          "refresh_data": true,
+          "recorded_at": "2026-05-19T01:17:09+00:00"
+        },
+        {
+          "date": "2026-05-19",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 146954.40402030945,
+          "cash": 430.5999279022217,
+          "daily_return": -0.009357995147173503,
+          "cumulative_return": -0.009357995147173503,
+          "latest_data_date": "2026-05-19",
+          "refresh_data": true,
+          "recorded_at": "2026-05-20T01:18:51+00:00"
+        },
+        {
+          "date": "2026-05-21",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 147104.99868392944,
+          "cash": 430.5999279022217,
+          "daily_return": 0.0010247713542439474,
+          "cumulative_return": -0.008342813598289589,
+          "latest_data_date": "2026-05-21",
+          "refresh_data": true,
+          "recorded_at": "2026-05-22T01:44:24+00:00"
+        },
+        {
+          "date": "2026-05-22",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 147864.4993543625,
+          "cash": 430.5999279022217,
+          "daily_return": 0.005162983428353085,
+          "cumulative_return": -0.0032229039782902813,
+          "latest_data_date": "2026-05-22",
+          "refresh_data": true,
+          "recorded_at": "2026-05-22T01:53:59+00:00"
+        },
+        {
+          "date": "2026-05-25",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 149527.3994922638,
+          "cash": 253.6013126373291,
+          "daily_return": 0.011246108059488336,
+          "cumulative_return": 0.007986958954792955,
+          "latest_data_date": "2026-05-25",
+          "refresh_data": true,
+          "recorded_at": "2026-05-26T01:19:58+00:00"
+        },
+        {
+          "date": "2026-05-27",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 152215.90585708618,
+          "cash": 107.20584392547607,
+          "daily_return": 0.017980024891434576,
+          "cumulative_return": 0.026110589567041487,
+          "latest_data_date": "2026-05-27",
+          "refresh_data": true,
+          "recorded_at": "2026-05-28T01:19:37+00:00"
+        },
+        {
+          "date": "2026-05-28",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 152665.30632972717,
+          "cash": -158.89315605163574,
+          "daily_return": 0.002952388386157967,
+          "cumulative_return": 0.029140066554593114,
+          "latest_data_date": "2026-05-28",
+          "refresh_data": true,
+          "recorded_at": "2026-05-29T01:18:55+00:00"
+        },
+        {
+          "date": "2026-05-29",
+          "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+          "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+          "portfolio_value": 154479.0001153946,
+          "cash": 389.800500869751,
+          "daily_return": 0.011880196157666667,
+          "cumulative_return": 0.04136645241897563,
+          "latest_data_date": "2026-05-29",
+          "refresh_data": true,
+          "recorded_at": "2026-05-31T14:29:15+00:00"
+        }
+      ],
+      "latest": {
+        "date": "2026-05-29",
+        "config_path": "configs/bigquant_rotation_hybrid_position_cap.yaml",
+        "strategy_label": "短线Sharpe最优：国内Hybrid轮动",
+        "portfolio_value": 154479.0001153946,
+        "cash": 389.800500869751,
+        "daily_return": 0.011880196157666667,
+        "cumulative_return": 0.04136645241897563,
+        "latest_data_date": "2026-05-29",
+        "refresh_data": true,
+        "recorded_at": "2026-05-31T14:29:15+00:00"
+      },
+      "record_count": 9
+    },
+    "as_of_date": "2026-05-29",
+    "latest_data_date": "2026-05-29",
+    "refresh_data": true,
+    "portfolio_value": 154479.0001153946,
+    "cash": 389.800500869751,
+    "trade_count": 3,
+    "orders": [
+      {
+        "symbol": "159915.SZ",
+        "name": "创业板ETF",
+        "side": "SELL",
+        "price": 4.052999973297119,
+        "current_shares": 17100.0,
+        "current_value": 69306.29954338074,
+        "current_weight": 0.44864544366295406,
+        "target_weight": 0.39999999999999997,
+        "target_value": 61791.60004615783,
+        "trade_shares": -1800.0,
+        "trade_value": -7295.399951934814,
+        "estimated_shares": 15300.0,
+        "estimated_weight": 0.4014196074879063
+      },
+      {
+        "symbol": "513100.SH",
+        "name": "纳指ETF",
+        "side": "SELL",
+        "price": 2.2730000019073486,
+        "current_shares": 37300.0,
+        "current_value": 84782.9000711441,
+        "current_weight": 0.5488312327747586,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": -37300.0,
+        "trade_value": -84782.9000711441,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "513500.SH",
+        "name": "标普500ETF",
+        "side": "BUY",
+        "price": 2.556999921798706,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.6,
+        "target_value": 92687.40006923676,
+        "trade_shares": 36200.0,
+        "trade_value": 92563.39716911316,
+        "estimated_shares": 36200.0,
+        "estimated_weight": 0.5991972831256613
+      }
+    ],
+    "targets": [
+      {
+        "symbol": "513500.SH",
+        "name": "标普500ETF",
+        "side": "BUY",
+        "price": 2.556999921798706,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.6,
+        "target_value": 92687.40006923676,
+        "trade_shares": 36200.0,
+        "trade_value": 92563.39716911316,
+        "estimated_shares": 36200.0,
+        "estimated_weight": 0.5991972831256613
+      },
+      {
+        "symbol": "159915.SZ",
+        "name": "创业板ETF",
+        "side": "SELL",
+        "price": 4.052999973297119,
+        "current_shares": 17100.0,
+        "current_value": 69306.29954338074,
+        "current_weight": 0.44864544366295406,
+        "target_weight": 0.39999999999999997,
+        "target_value": 61791.60004615783,
+        "trade_shares": -1800.0,
+        "trade_value": -7295.399951934814,
+        "estimated_shares": 15300.0,
+        "estimated_weight": 0.4014196074879063
+      },
+      {
+        "symbol": "159985.SZ",
+        "name": "豆粕ETF",
+        "side": "HOLD",
+        "price": 2.0769999027252197,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": 0.0,
+        "trade_value": 0.0,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "160723.SZ",
+        "name": "嘉实原油",
+        "side": "HOLD",
+        "price": 2.108,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": 0.0,
+        "trade_value": 0.0,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "510300.SH",
+        "name": "沪深300ETF",
+        "side": "HOLD",
+        "price": 4.922999858856201,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": 0.0,
+        "trade_value": 0.0,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "513100.SH",
+        "name": "纳指ETF",
+        "side": "SELL",
+        "price": 2.2730000019073486,
+        "current_shares": 37300.0,
+        "current_value": 84782.9000711441,
+        "current_weight": 0.5488312327747586,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": -37300.0,
+        "trade_value": -84782.9000711441,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "513130.SH",
+        "name": "恒生科技ETF",
+        "side": "HOLD",
+        "price": 0.6110000014305115,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": 0.0,
+        "trade_value": 0.0,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "513600.SH",
+        "name": "恒生指数ETF",
+        "side": "HOLD",
+        "price": 2.743000030517578,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": 0.0,
+        "trade_value": 0.0,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      },
+      {
+        "symbol": "518880.SH",
+        "name": "黄金ETF",
+        "side": "HOLD",
+        "price": 9.397000312805176,
+        "current_shares": 0.0,
+        "current_value": 0.0,
+        "current_weight": 0.0,
+        "target_weight": 0.0,
+        "target_value": 0.0,
+        "trade_shares": 0.0,
+        "trade_value": 0.0,
+        "estimated_shares": 0.0,
+        "estimated_weight": 0.0
+      }
+    ],
+    "projected_positions": {
+      "cash": -95.29664516448975,
+      "holdings": [
+        {
+          "symbol": "159915.SZ",
+          "shares": 15300.0
+        },
+        {
+          "symbol": "159985.SZ",
+          "shares": 0.0
+        },
+        {
+          "symbol": "160723.SZ",
+          "shares": 0.0
+        },
+        {
+          "symbol": "510300.SH",
+          "shares": 0.0
+        },
+        {
+          "symbol": "513100.SH",
+          "shares": 0.0
+        },
+        {
+          "symbol": "513130.SH",
+          "shares": 0.0
+        },
+        {
+          "symbol": "513500.SH",
+          "shares": 36200.0
+        },
+        {
+          "symbol": "513600.SH",
+          "shares": 0.0
+        },
+        {
+          "symbol": "518880.SH",
+          "shares": 0.0
+        }
+      ]
+    },
+    "output_dir": "/Users/bytedance/Documents/pyf_project/etf_quant/outputs/experiments/bigquant_rotation/hybrid_position_cap/app",
+    "recorded_at": "2026-05-31T14:29:15+00:00"
+  }
 }

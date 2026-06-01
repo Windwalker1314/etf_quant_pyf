@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -17,9 +18,10 @@ from etf_quant.live.rebalance import build_live_rebalance_plan, format_live_plan
 
 
 DEFAULT_STRATEGY_GLOB = "configs/*.yaml"
-DEFAULT_SELECTED_CONFIG = "configs/bigquant_rotation_hybrid_candidate_take_profit.yaml"
+DEFAULT_SELECTED_CONFIG = "configs/bigquant_rotation_hybrid_position_cap.yaml"
 DEFAULT_POSITIONS_PATH = Path("data/live/positions.csv")
 DEFAULT_STATE_PATH = Path("data/live/app_state.json")
+DEFAULT_PERFORMANCE_LOG_PATH = Path("data/live/performance_log.csv")
 STRATEGY_DISPLAY_NAMES = {
     "bigquant_rotation": "PYF ETF轮动",
 }
@@ -27,12 +29,12 @@ CONFIG_DISPLAY_NAMES = {
     "configs/pyf_global_etf_rotation_yahoo.yaml": "PYF全球ETF轮动",
     "configs/bigquant_rotation_hybrid_candidate_take_profit.yaml": "PYF国内ETF止盈轮动",
     "configs/bigquant_rotation_hybrid_candidate_turnover.yaml": "PYF国内ETF换手优化",
+    "configs/global_etf_position_cap_yahoo.yaml": "长线Sharpe最优：全球ETF轮动",
+    "configs/bigquant_rotation_hybrid_position_cap.yaml": "短线Sharpe最优：国内Hybrid轮动",
 }
 APP_STRATEGY_CONFIGS = [
-    "configs/bigquant_rotation_hybrid_candidate_take_profit.yaml",
-    "configs/bigquant_rotation_hybrid_candidate_turnover.yaml",
-    "configs/pyf_global_etf_rotation_yahoo.yaml",
-    "configs/live/bigquant_rotation_live_akshare.yaml",
+    "configs/global_etf_position_cap_yahoo.yaml",
+    "configs/bigquant_rotation_hybrid_position_cap.yaml",
 ]
 REMOTE_DATA_SOURCES = {"akshare", "tushare", "yahoo"}
 INCREMENTAL_REFRESH_OVERLAP_DAYS = 7
@@ -45,6 +47,7 @@ class LocalAppPaths:
     root: Path
     positions_path: Path = DEFAULT_POSITIONS_PATH
     state_path: Path = DEFAULT_STATE_PATH
+    performance_log_path: Path = DEFAULT_PERFORMANCE_LOG_PATH
     strategy_glob: str = DEFAULT_STRATEGY_GLOB
 
     def resolve(self, path: str | Path) -> Path:
@@ -58,6 +61,10 @@ class LocalAppPaths:
     @property
     def state(self) -> Path:
         return self.resolve(self.state_path)
+
+    @property
+    def performance_log(self) -> Path:
+        return self.resolve(self.performance_log_path)
 
 
 class LocalAppService:
@@ -74,6 +81,8 @@ class LocalAppService:
             "selected_config": selected,
             "positions": self.get_positions(selected),
             "backtest": self.get_backtest(selected),
+            "performance": self.get_performance(selected),
+            "last_plan": self.get_last_plan(selected),
             "settings": {
                 "lot_size": int(state.get("lot_size", 100)),
                 "min_trade_value": float(state.get("min_trade_value", 0.0)),
@@ -87,8 +96,6 @@ class LocalAppService:
             configs = sorted(self.paths.root.glob(self.paths.strategy_glob))
         if not configs:
             configs = sorted((self.paths.root / "configs").glob("*.yaml"))
-        preferred = self.paths.resolve(DEFAULT_SELECTED_CONFIG).resolve()
-        configs = sorted(configs, key=lambda path: (path.resolve() != preferred, path.name))
         strategies = []
         for config_path in configs:
             try:
@@ -130,6 +137,53 @@ class LocalAppService:
             "years": years,
             "output_dir": str(config.output_dir),
         }
+
+    def get_performance(self, config_path: str | Path | None = None, days: int = 90) -> dict[str, Any]:
+        if config_path is None:
+            return self._empty_performance(days)
+        display_path = self._performance_config_key(config_path)
+        frame = self._load_performance_log()
+        if frame.empty:
+            return self._empty_performance(days)
+        frame = frame[frame["config_path"] == display_path].copy()
+        if frame.empty:
+            return self._empty_performance(days)
+        frame = self._with_performance_returns(frame)
+        frame = frame.sort_values("date")
+        if days > 0:
+            cutoff = pd.Timestamp(frame["date"].max()) - pd.DateOffset(days=days)
+            frame = frame[pd.to_datetime(frame["date"]) >= cutoff].copy()
+        records = self._records(frame)
+        latest = records[-1] if records else None
+        return {
+            "path": str(self.paths.performance_log),
+            "days": days,
+            "records": records,
+            "latest": latest,
+            "record_count": len(records),
+        }
+
+    def get_last_plan(self, config_path: str | Path | None = None) -> dict[str, Any] | None:
+        state = self.load_state()
+        last_plan = state.get("last_plan")
+        if not isinstance(last_plan, dict):
+            return None
+        if config_path is None:
+            return last_plan
+        try:
+            display_path = self._display_path(self._resolve_config(config_path))
+        except Exception:
+            display_path = str(config_path)
+        if last_plan.get("config_path") != display_path:
+            return None
+        return last_plan
+
+    def _performance_config_key(self, config_path: str | Path) -> str:
+        value = str(config_path)
+        frame = self._load_performance_log()
+        if not frame.empty and value in set(frame["config_path"].dropna().astype(str)):
+            return value
+        return self._display_path(self._resolve_config(config_path))
 
     def save_positions(self, payload: dict[str, Any]) -> dict[str, Any]:
         holdings = payload.get("holdings", [])
@@ -201,22 +255,33 @@ class LocalAppService:
         output_dir = ensure_dir(config.output_dir / "app")
         write_frame(plan.plan, output_dir / "live_rebalance_plan.csv")
         (output_dir / "live_rebalance_plan.md").write_text(format_live_plan_markdown(plan), encoding="utf-8")
+        performance = self._record_performance(
+            config_path=config_path,
+            config=config,
+            plan=plan,
+            latest_data_date=latest_data_date,
+            refresh_data=refresh_data,
+        )
 
-        return {
+        named_plan = self._attach_asset_names(plan.plan, config)
+        result = {
             "strategy": self._strategy_summary(config_path, config),
             "backtest": self.get_backtest(config_path),
+            "performance": performance,
             "as_of_date": plan.as_of_date.date().isoformat(),
             "latest_data_date": latest_data_date,
             "refresh_data": refresh_data,
             "portfolio_value": plan.portfolio_value,
             "cash": plan.cash,
-            "trade_count": int((plan.plan["side"] != "HOLD").sum()),
-            "orders": self._records(plan.plan[plan.plan["side"] != "HOLD"].copy()),
-            "targets": self._records(plan.plan.sort_values("target_weight", ascending=False).copy()),
+            "trade_count": int((named_plan["side"] != "HOLD").sum()),
+            "orders": self._records(named_plan[named_plan["side"] != "HOLD"].copy()),
+            "targets": self._records(named_plan.sort_values("target_weight", ascending=False).copy()),
             "projected_positions": self._projected_positions(plan.plan, plan.cash),
             "output_dir": str(output_dir),
             "markdown": format_live_plan_markdown(plan),
         }
+        self._save_last_plan(config_path, result)
+        return result
 
     def _symbols_for_config(self, config_path: str | Path | None) -> list[str]:
         if config_path is None:
@@ -265,7 +330,8 @@ class LocalAppService:
             display_path,
             STRATEGY_DISPLAY_NAMES.get(config.strategy.name, config.strategy.name),
         )
-        date_range = " - ".join(value for value in [config.data.start, config.data.end] if value)
+        actual_date_range = self._actual_date_range(config.data)
+        configured_date_range = " - ".join(value for value in [config.data.start, config.data.end] if value)
         return {
             "path": display_path,
             "label": display_name,
@@ -274,7 +340,9 @@ class LocalAppService:
             "data_source": "hybrid" if self._is_hybrid_data_config(config) else config.data.source,
             "can_refresh": self._can_refresh_data(config),
             "universe_size": len(config.universe),
-            "date_range": date_range,
+            "date_range": actual_date_range or configured_date_range,
+            "configured_date_range": configured_date_range,
+            "actual_date_range": actual_date_range,
             "output_dir": str(config.output_dir),
         }
 
@@ -309,6 +377,133 @@ class LocalAppService:
         trade_value = float(plan["trade_value"].sum()) if "trade_value" in plan.columns else 0.0
         projected_cash = float(cash or 0.0) - trade_value
         return {"cash": projected_cash, "holdings": holdings}
+
+    @staticmethod
+    def _attach_asset_names(plan: pd.DataFrame, config: AppConfig) -> pd.DataFrame:
+        names = {asset.symbol: asset.name for asset in config.universe}
+        named = plan.copy()
+        named.insert(1, "name", named["symbol"].map(names).fillna(""))
+        return named
+
+    def _save_last_plan(self, config_path: Path, plan_result: dict[str, Any]) -> None:
+        state = self.load_state()
+        state["last_plan"] = {
+            "config_path": self._display_path(config_path),
+            "strategy": plan_result.get("strategy"),
+            "performance": plan_result.get("performance"),
+            "as_of_date": plan_result.get("as_of_date"),
+            "latest_data_date": plan_result.get("latest_data_date"),
+            "refresh_data": plan_result.get("refresh_data"),
+            "portfolio_value": plan_result.get("portfolio_value"),
+            "cash": plan_result.get("cash"),
+            "trade_count": plan_result.get("trade_count"),
+            "orders": plan_result.get("orders", []),
+            "targets": plan_result.get("targets", []),
+            "projected_positions": plan_result.get("projected_positions"),
+            "output_dir": plan_result.get("output_dir"),
+            "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        ensure_dir(self.paths.state.parent)
+        self.paths.state.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _record_performance(
+        self,
+        config_path: Path,
+        config: AppConfig,
+        plan: Any,
+        latest_data_date: str | None,
+        refresh_data: bool,
+    ) -> dict[str, Any]:
+        ensure_dir(self.paths.performance_log.parent)
+        display_path = self._display_path(config_path)
+        summary = self._strategy_summary(config_path, config)
+        record = {
+            "date": plan.as_of_date.date().isoformat(),
+            "config_path": display_path,
+            "strategy_label": summary["label"],
+            "portfolio_value": float(plan.portfolio_value or 0.0),
+            "cash": float(plan.cash or 0.0),
+            "latest_data_date": latest_data_date or "",
+            "refresh_data": bool(refresh_data),
+            "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        frame = self._load_performance_log()
+        new_row = pd.DataFrame([record])
+        if frame.empty:
+            frame = new_row
+        else:
+            key = (frame["date"].astype(str) == record["date"]) & (frame["config_path"].astype(str) == display_path)
+            frame = pd.concat([frame.loc[~key], new_row], ignore_index=True)
+        frame = self._with_performance_returns(frame)
+        frame = frame.sort_values(["config_path", "date"]).reset_index(drop=True)
+        frame.to_csv(self.paths.performance_log, index=False)
+        return self.get_performance(display_path)
+
+    def _actual_date_range(self, data_config: DataConfig) -> str:
+        if data_config.path is None or not data_config.path.exists():
+            return ""
+        try:
+            frame = pd.read_csv(data_config.path, usecols=["date"])
+        except Exception:
+            return ""
+        if frame.empty or "date" not in frame.columns:
+            return ""
+        dates = pd.to_datetime(frame["date"], errors="coerce").dropna()
+        if dates.empty:
+            return ""
+        start = dates.min().date().isoformat()
+        end = dates.max().date().isoformat()
+        return start if start == end else f"{start} - {end}"
+
+    def _load_performance_log(self) -> pd.DataFrame:
+        columns = [
+            "date",
+            "config_path",
+            "strategy_label",
+            "portfolio_value",
+            "cash",
+            "daily_return",
+            "cumulative_return",
+            "latest_data_date",
+            "refresh_data",
+            "recorded_at",
+        ]
+        if not self.paths.performance_log.exists():
+            return pd.DataFrame(columns=columns)
+        frame = pd.read_csv(self.paths.performance_log)
+        for column in columns:
+            if column not in frame.columns:
+                frame[column] = pd.NA
+        return frame[columns]
+
+    @staticmethod
+    def _with_performance_returns(frame: pd.DataFrame) -> pd.DataFrame:
+        if frame.empty:
+            return frame.copy()
+        result = frame.copy()
+        result["date"] = pd.to_datetime(result["date"]).dt.date.astype(str)
+        result["portfolio_value"] = pd.to_numeric(result["portfolio_value"], errors="coerce").fillna(0.0)
+        result["cash"] = pd.to_numeric(result["cash"], errors="coerce").fillna(0.0)
+        result = result.sort_values(["config_path", "date"]).reset_index(drop=True)
+        result["daily_return"] = (
+            result.groupby("config_path", group_keys=False)["portfolio_value"]
+            .pct_change()
+            .replace([float("inf"), float("-inf")], pd.NA)
+            .fillna(0.0)
+        )
+        first_value = result.groupby("config_path")["portfolio_value"].transform("first").replace(0.0, pd.NA)
+        result["cumulative_return"] = (result["portfolio_value"] / first_value - 1.0).fillna(0.0)
+        return result
+
+    @staticmethod
+    def _empty_performance(days: int) -> dict[str, Any]:
+        return {
+            "path": "",
+            "days": days,
+            "records": [],
+            "latest": None,
+            "record_count": 0,
+        }
 
     def _refresh_market_data(self, config: AppConfig) -> MarketData:
         if config.data.path is None or not config.data.path.exists():
@@ -415,7 +610,7 @@ class LocalAppService:
         return {
             key: float(value)
             for key, value in raw.items()
-            if isinstance(value, int | float) and key in {"annualized_return", "sharpe", "max_drawdown", "total_return"}
+            if isinstance(value, (int, float)) and key in {"annualized_return", "sharpe", "max_drawdown", "total_return"}
         }
 
     @staticmethod

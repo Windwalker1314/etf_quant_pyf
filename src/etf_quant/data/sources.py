@@ -111,11 +111,17 @@ class YahooFinanceDataSource:
                 "open": quote.get("open"),
                 "high": quote.get("high"),
                 "low": quote.get("low"),
-                "close": adjusted or quote.get("close"),
+                "close": quote.get("close"),
+                "adj_close": adjusted,
                 "volume": quote.get("volume"),
             }
         )
         frame = frame.dropna(subset=["open", "high", "low", "close"])
+        if "adj_close" in frame.columns and frame["adj_close"].notna().any():
+            factor = frame["adj_close"] / frame["close"]
+            for column in ["open", "high", "low", "close"]:
+                frame[column] = frame[column] * factor
+            frame = frame.drop(columns=["adj_close"])
         if frame.empty:
             raise RuntimeError("no valid OHLC rows")
         return frame

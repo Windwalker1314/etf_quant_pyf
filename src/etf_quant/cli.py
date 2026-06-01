@@ -12,14 +12,23 @@ from etf_quant.data.sample import write_sample_prices
 from etf_quant.data.sources import download_market_data, load_market_data
 from etf_quant.io import ensure_dir, write_frame, write_metrics
 from etf_quant.research.sweep import (
+    DEFAULT_POSITION_CAPS,
+    DEFAULT_TREND_BUCKET_CAPS,
+    DEFAULT_TREND_GROUP_CAPS,
+    run_crisis_window_report,
     run_bigquant_turnover_sweep,
     run_macro_filter_sweep,
     run_macro_risk_sweep,
     run_macro_trend_sweep,
+    run_position_cap_sweep,
+    run_trend_state_budget_sweep,
 )
 from etf_quant.live.rebalance import build_live_rebalance_plan, build_rebalance_plan, format_live_plan_markdown
 from etf_quant.strategies.registry import build_strategy
 from etf_quant.validation.walk_forward import WalkForwardValidator
+
+
+OHLC_ANOMALY_WARN_THRESHOLD = 0.01
 
 
 def cmd_init_sample_data(args: argparse.Namespace) -> None:
@@ -55,7 +64,24 @@ def cmd_macro_price_ratio(args: argparse.Namespace) -> None:
 
 def cmd_validate_data(args: argparse.Namespace) -> None:
     config = load_config(args.config)
+    raw_columns = []
+    if config.data.path is not None and config.data.path.exists():
+        raw_columns = list(pd.read_csv(config.data.path, nrows=0).columns)
     market_data = load_market_data(config.data)
+    frame = market_data.prices.copy()
+    duplicate_count = int(frame.duplicated(["date", "symbol"]).sum())
+    unnamed_columns = [column for column in raw_columns if str(column).startswith("Unnamed")]
+    ohlc_anomaly_ratio = market_data.ohlc_anomaly_ratio()
+    print(f"rows: {len(frame)}")
+    print(f"symbols: {frame['symbol'].nunique()}")
+    print(f"date range: {frame['date'].min().date()} - {frame['date'].max().date()}")
+    print(f"duplicate date/symbol rows: {duplicate_count}")
+    if unnamed_columns:
+        print(f"unnamed columns ignored on load: {', '.join(unnamed_columns)}")
+    if ohlc_anomaly_ratio > 0:
+        print(f"OHLC anomaly ratio: {ohlc_anomaly_ratio:.2%}")
+        if ohlc_anomaly_ratio > OHLC_ANOMALY_WARN_THRESHOLD:
+            print("warning: OHLC columns appear to mix adjusted and unadjusted prices")
     close = market_data.close_wide()
     returns = close.pct_change()
     threshold = float(args.jump_threshold)
@@ -164,6 +190,57 @@ def cmd_sweep_bigquant(args: argparse.Namespace) -> None:
     print(frame.head(10).to_string(index=False))
 
 
+def cmd_sweep_position_cap(args: argparse.Namespace) -> None:
+    config = load_config(args.config)
+    market_data = load_market_data(config.data)
+    output_dir = args.output_dir or (
+        Path("outputs") / "experiments" / config.strategy.name / Path(args.config).stem / "sweeps"
+    )
+    caps = [float(value) for value in (args.caps or DEFAULT_POSITION_CAPS)]
+    frame = run_position_cap_sweep(
+        config,
+        market_data,
+        output_dir=output_dir,
+        caps=caps,
+        include_walk_forward=args.walk_forward,
+    )
+    print(f"position cap sweep complete: {output_dir}")
+    print(frame.to_string(index=False))
+
+
+def cmd_sweep_trend_budget(args: argparse.Namespace) -> None:
+    config = load_config(args.config)
+    market_data = load_market_data(config.data)
+    output_dir = args.output_dir or (
+        Path("outputs") / "experiments" / config.strategy.name / Path(args.config).stem / "sweeps"
+    )
+    bucket_caps = [float(value) for value in (args.bucket_caps or DEFAULT_TREND_BUCKET_CAPS)]
+    group_caps = [float(value) for value in (args.group_caps or DEFAULT_TREND_GROUP_CAPS)]
+    weak_group_caps = [float(value) for value in args.weak_group_caps]
+    frame = run_trend_state_budget_sweep(
+        config,
+        market_data,
+        output_dir=output_dir,
+        bucket_caps=bucket_caps,
+        group_caps=group_caps,
+        weak_group_caps=weak_group_caps,
+        include_walk_forward=args.walk_forward,
+    )
+    print(f"trend state budget sweep complete: {output_dir}")
+    print(frame.head(20).to_string(index=False))
+
+
+def cmd_crisis_windows(args: argparse.Namespace) -> None:
+    config = load_config(args.config)
+    market_data = load_market_data(config.data)
+    output_dir = args.output_dir or (
+        Path("outputs") / "experiments" / config.strategy.name / Path(args.config).stem / "risk_reports"
+    )
+    frame = run_crisis_window_report(config, market_data, output_dir=output_dir)
+    print(f"crisis window report complete: {output_dir}")
+    print(frame.to_string(index=False))
+
+
 def cmd_sweep_macro_risk(args: argparse.Namespace) -> None:
     config = load_config(args.config)
     market_data = load_market_data(config.data)
@@ -265,6 +342,27 @@ def build_parser() -> argparse.ArgumentParser:
     sweep.add_argument("--output-dir", default=None)
     sweep.add_argument("--preset", choices=["turnover", "gap"], default="turnover")
     sweep.set_defaults(func=cmd_sweep_bigquant)
+
+    position_cap = sub.add_parser("sweep-position-cap", help="batch test max_position_weight values")
+    position_cap.add_argument("--config", required=True)
+    position_cap.add_argument("--output-dir", default=None)
+    position_cap.add_argument("--caps", nargs="+", type=float, default=None)
+    position_cap.add_argument("--walk-forward", action="store_true", help="also run walk-forward for each cap")
+    position_cap.set_defaults(func=cmd_sweep_position_cap)
+
+    trend_budget = sub.add_parser("sweep-trend-budget", help="batch test trend-state bucket budget parameters")
+    trend_budget.add_argument("--config", required=True)
+    trend_budget.add_argument("--output-dir", default=None)
+    trend_budget.add_argument("--bucket-caps", nargs="+", type=float, default=None)
+    trend_budget.add_argument("--group-caps", nargs="+", type=float, default=None)
+    trend_budget.add_argument("--weak-group-caps", nargs="+", type=float, default=[0.30, 0.40, 0.50])
+    trend_budget.add_argument("--walk-forward", action="store_true", help="also run walk-forward for each budget")
+    trend_budget.set_defaults(func=cmd_sweep_trend_budget)
+
+    crisis = sub.add_parser("crisis-windows", help="summarize strategy behavior in historical stress windows")
+    crisis.add_argument("--config", required=True)
+    crisis.add_argument("--output-dir", default=None)
+    crisis.set_defaults(func=cmd_crisis_windows)
 
     macro = sub.add_parser("sweep-macro-risk", help="batch test macro proxy risk-on/risk-off parameters")
     macro.add_argument("--config", required=True)

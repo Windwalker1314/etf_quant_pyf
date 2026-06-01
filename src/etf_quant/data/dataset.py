@@ -21,6 +21,7 @@ class MarketData:
     @classmethod
     def from_frame(cls, frame: pd.DataFrame) -> "MarketData":
         data = frame.copy()
+        data = data.loc[:, ~data.columns.astype(str).str.startswith("Unnamed")]
         data["date"] = pd.to_datetime(data["date"])
         data = data.sort_values(["date", "symbol"]).reset_index(drop=True)
         return cls(data)
@@ -56,6 +57,17 @@ class MarketData:
             .sort_index()
             .ffill()
         )
+
+    def ohlc_anomaly_ratio(self) -> float:
+        price_cols = ["open", "high", "low", "close"]
+        frame = self.prices[price_cols].apply(pd.to_numeric, errors="coerce")
+        valid = frame.dropna()
+        if valid.empty:
+            return 0.0
+        bad = (valid["high"] < valid[["open", "low", "close"]].max(axis=1)) | (
+            valid["low"] > valid[["open", "high", "close"]].min(axis=1)
+        )
+        return float(bad.mean())
 
     def returns(self) -> pd.DataFrame:
         return self.close_wide().pct_change().fillna(0.0)

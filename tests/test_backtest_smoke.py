@@ -1,5 +1,7 @@
 import unittest
 
+import pandas as pd
+
 from etf_quant.backtest.engine import BacktestEngine
 from etf_quant.config.schema import Asset, BacktestConfig, FactorConfig, StrategyConfig
 from etf_quant.data.dataset import MarketData
@@ -59,6 +61,53 @@ class BacktestSmokeTests(unittest.TestCase):
         )
 
         self.assertFalse(result.equity_curve.empty)
+
+    def test_next_open_falls_back_when_ohlc_is_adjusted_inconsistently(self):
+        frame = pd.DataFrame(
+            [
+                {"date": "2020-01-01", "symbol": "AAA", "open": 100.0, "high": 101.0, "low": 99.0, "close": 50.0, "volume": 1},
+                {"date": "2020-01-02", "symbol": "AAA", "open": 110.0, "high": 111.0, "low": 109.0, "close": 55.0, "volume": 1},
+                {"date": "2020-01-03", "symbol": "AAA", "open": 120.0, "high": 121.0, "low": 119.0, "close": 60.0, "volume": 1},
+            ]
+        )
+        data = MarketData.from_frame(frame)
+        strategy = build_strategy(StrategyConfig(name="equal_weight", params={})).fit(data)
+
+        result = BacktestEngine(
+            BacktestConfig(
+                rebalance="D",
+                execution="next_open",
+                initial_cash=100.0,
+                commission_bps=0.0,
+                slippage_bps=0.0,
+            )
+        ).run(
+            data,
+            [],
+            strategy,
+        )
+
+        self.assertGreater(data.ohlc_anomaly_ratio(), 0.01)
+        self.assertAlmostEqual(result.daily_returns.iloc[1], 0.10)
+
+    def test_market_data_drops_export_index_columns(self):
+        frame = pd.DataFrame(
+            [
+                {
+                    "Unnamed: 0": 0,
+                    "date": "2020-01-01",
+                    "symbol": "AAA",
+                    "open": 1.0,
+                    "high": 1.1,
+                    "low": 0.9,
+                    "close": 1.0,
+                    "volume": 1,
+                }
+            ]
+        )
+        data = MarketData.from_frame(frame)
+
+        self.assertNotIn("Unnamed: 0", data.prices.columns)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from itertools import product
 from pathlib import Path
 from typing import Iterable
@@ -7,11 +8,26 @@ from typing import Iterable
 import pandas as pd
 
 from etf_quant.backtest.engine import BacktestEngine
+from etf_quant.backtest.metrics import max_drawdown
 from etf_quant.config.schema import AppConfig, StrategyConfig
 from etf_quant.data.dataset import MarketData
 from etf_quant.factors.library import compute_factor_panel
 from etf_quant.io import ensure_dir
 from etf_quant.strategies.registry import build_strategy
+from etf_quant.validation.walk_forward import WalkForwardValidator
+
+
+DEFAULT_POSITION_CAPS = [0.50, 0.60, 0.70, 0.80]
+DEFAULT_TREND_BUCKET_CAPS = [0.50, 0.60, 0.70, 0.80]
+DEFAULT_TREND_GROUP_CAPS = [0.70, 0.80, 0.90]
+DEFAULT_CRISIS_WINDOWS = [
+    ("2008_financial_crisis", "2007-10-09", "2009-03-09"),
+    ("2011_eurozone_us_downgrade", "2011-05-02", "2011-10-03"),
+    ("2015_2016_global_shock", "2015-06-12", "2016-02-11"),
+    ("2018_hike_trade_tension", "2018-01-26", "2018-12-24"),
+    ("2020_covid_crash", "2020-02-19", "2020-03-23"),
+    ("2022_rate_hike_valuation", "2022-01-03", "2022-10-12"),
+]
 
 
 def _iter_turnover_controls() -> Iterable[dict[str, object]]:
@@ -99,6 +115,201 @@ def run_bigquant_turnover_sweep(
         frame = frame.sort_values(existing, ascending=ascending[: len(existing)]).reset_index(drop=True)
     frame.to_csv(target_dir / f"bigquant_{preset}_sweep.csv", index=False)
     frame.head(20).to_csv(target_dir / f"bigquant_{preset}_sweep_top20.csv", index=False)
+    return frame
+
+
+def run_position_cap_sweep(
+    config: AppConfig,
+    market_data: MarketData,
+    output_dir: str | Path | None = None,
+    caps: Iterable[float] = DEFAULT_POSITION_CAPS,
+    include_walk_forward: bool = False,
+) -> pd.DataFrame:
+    if config.strategy.name != "bigquant_rotation":
+        raise ValueError("run_position_cap_sweep only supports bigquant_rotation")
+
+    target_dir = ensure_dir(output_dir or config.output_dir / "sweeps")
+    factor_data = compute_factor_panel(market_data, config.factors)
+    engine = BacktestEngine(config.backtest)
+    rows: list[dict[str, object]] = []
+
+    for idx, cap in enumerate(caps, start=1):
+        cap = float(cap)
+        strategy_config = StrategyConfig(
+            name=config.strategy.name,
+            params={**config.strategy.params, "max_position_weight": cap},
+        )
+        candidate = replace(config, strategy=strategy_config)
+        strategy = build_strategy(strategy_config).fit(market_data)
+        result = engine.run(market_data, config.factors, strategy, factor_data=factor_data)
+        rows.append(
+            {
+                "run_id": idx,
+                "mode": "backtest",
+                "max_position_weight": cap,
+                **result.metrics,
+            }
+        )
+
+        if include_walk_forward:
+            if candidate.walk_forward is None:
+                raise ValueError("walk_forward config is required for --walk-forward")
+            wf_result = WalkForwardValidator(candidate).run(market_data)
+            rows.append(
+                {
+                    "run_id": idx,
+                    "mode": "walk_forward",
+                    "max_position_weight": cap,
+                    **wf_result.metrics,
+                }
+            )
+
+    frame = pd.DataFrame(rows)
+    sort_cols = ["mode", "sharpe", "annualized_return", "max_drawdown", "annualized_turnover"]
+    ascending = [True, False, False, False, True]
+    existing = [col for col in sort_cols if col in frame.columns]
+    if existing:
+        frame = frame.sort_values(existing, ascending=ascending[: len(existing)]).reset_index(drop=True)
+    frame.to_csv(target_dir / "position_cap_sweep.csv", index=False)
+    return frame
+
+
+def run_trend_state_budget_sweep(
+    config: AppConfig,
+    market_data: MarketData,
+    output_dir: str | Path | None = None,
+    bucket_caps: Iterable[float] = DEFAULT_TREND_BUCKET_CAPS,
+    group_caps: Iterable[float] = DEFAULT_TREND_GROUP_CAPS,
+    weak_group_caps: Iterable[float] = (0.30, 0.40, 0.50),
+    include_walk_forward: bool = False,
+) -> pd.DataFrame:
+    if config.strategy.name != "bigquant_rotation":
+        raise ValueError("run_trend_state_budget_sweep only supports bigquant_rotation")
+
+    target_dir = ensure_dir(output_dir or config.output_dir / "sweeps")
+    factor_data = compute_factor_panel(market_data, config.factors)
+    engine = BacktestEngine(config.backtest)
+    rows: list[dict[str, object]] = []
+
+    for idx, (bucket_cap, group_cap, weak_group_cap) in enumerate(
+        product(bucket_caps, group_caps, weak_group_caps),
+        start=1,
+    ):
+        bucket_cap = float(bucket_cap)
+        group_cap = float(group_cap)
+        weak_group_cap = float(weak_group_cap)
+        if bucket_cap > group_cap:
+            continue
+        params = {
+            "use_trend_state_budget": True,
+            "trend_state_budgets": {
+                "strong": {"bucket_cap": bucket_cap, "group_cap": group_cap},
+                "neutral": {
+                    "bucket_cap": min(bucket_cap, 0.60),
+                    "group_cap": min(group_cap, 0.80),
+                },
+                "weak": {
+                    "bucket_cap": min(bucket_cap, 0.40),
+                    "group_cap": weak_group_cap,
+                },
+            },
+        }
+        strategy_config = StrategyConfig(
+            name=config.strategy.name,
+            params={**config.strategy.params, **params},
+        )
+        candidate = replace(config, strategy=strategy_config)
+        strategy = build_strategy(strategy_config).fit(market_data)
+        result = engine.run(market_data, config.factors, strategy, factor_data=factor_data)
+        rows.append(
+            {
+                "run_id": idx,
+                "mode": "backtest",
+                "strong_bucket_cap": bucket_cap,
+                "strong_group_cap": group_cap,
+                "weak_group_cap": weak_group_cap,
+                **result.metrics,
+            }
+        )
+
+        if include_walk_forward:
+            if candidate.walk_forward is None:
+                raise ValueError("walk_forward config is required for --walk-forward")
+            wf_result = WalkForwardValidator(candidate).run(market_data)
+            rows.append(
+                {
+                    "run_id": idx,
+                    "mode": "walk_forward",
+                    "strong_bucket_cap": bucket_cap,
+                    "strong_group_cap": group_cap,
+                    "weak_group_cap": weak_group_cap,
+                    **wf_result.metrics,
+                }
+            )
+
+    frame = pd.DataFrame(rows)
+    sort_cols = ["mode", "sharpe", "annualized_return", "max_drawdown", "annualized_turnover"]
+    ascending = [True, False, False, False, True]
+    existing = [col for col in sort_cols if col in frame.columns]
+    if existing:
+        frame = frame.sort_values(existing, ascending=ascending[: len(existing)]).reset_index(drop=True)
+    frame.to_csv(target_dir / "trend_state_budget_sweep.csv", index=False)
+    frame.head(20).to_csv(target_dir / "trend_state_budget_sweep_top20.csv", index=False)
+    return frame
+
+
+def summarize_crisis_windows(
+    equity_curve: pd.Series,
+    weights: pd.DataFrame,
+    turnover: pd.Series,
+    windows: Iterable[tuple[str, str, str]] = DEFAULT_CRISIS_WINDOWS,
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for name, start, end in windows:
+        start_ts = pd.Timestamp(start)
+        end_ts = pd.Timestamp(end)
+        window_equity = equity_curve.loc[(equity_curve.index >= start_ts) & (equity_curve.index <= end_ts)]
+        window_weights = weights.loc[(weights.index >= start_ts) & (weights.index <= end_ts)]
+        window_turnover = turnover.loc[(turnover.index >= start_ts) & (turnover.index <= end_ts)]
+        if window_equity.empty:
+            continue
+
+        long_weights = window_weights.clip(lower=0.0)
+        avg_weights = long_weights.mean().sort_values(ascending=False)
+        top_holdings = [
+            f"{symbol}:{weight:.1%}"
+            for symbol, weight in avg_weights[avg_weights > 1e-9].head(3).items()
+        ]
+        gross_exposure = long_weights.sum(axis=1)
+        max_weight = long_weights.max(axis=1) if not long_weights.empty else pd.Series(dtype=float)
+        rows.append(
+            {
+                "window": name,
+                "start": start_ts.date().isoformat(),
+                "end": end_ts.date().isoformat(),
+                "observations": int(len(window_equity)),
+                "window_return": float(window_equity.iloc[-1] / window_equity.iloc[0] - 1.0),
+                "max_drawdown": max_drawdown(window_equity),
+                "avg_gross_exposure": float(gross_exposure.mean()) if not gross_exposure.empty else 0.0,
+                "max_single_asset_weight": float(max_weight.max()) if not max_weight.empty else 0.0,
+                "trade_count": int(window_turnover.gt(1e-9).sum()),
+                "top_holdings": "; ".join(top_holdings),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def run_crisis_window_report(
+    config: AppConfig,
+    market_data: MarketData,
+    output_dir: str | Path | None = None,
+    windows: Iterable[tuple[str, str, str]] = DEFAULT_CRISIS_WINDOWS,
+) -> pd.DataFrame:
+    target_dir = ensure_dir(output_dir or config.output_dir / "risk_reports")
+    strategy = build_strategy(config.strategy).fit(market_data)
+    result = BacktestEngine(config.backtest).run(market_data, config.factors, strategy)
+    frame = summarize_crisis_windows(result.equity_curve, result.weights, result.turnover, windows=windows)
+    frame.to_csv(target_dir / "crisis_windows.csv", index=False)
     return frame
 
 

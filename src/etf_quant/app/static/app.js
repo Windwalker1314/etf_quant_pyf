@@ -3,6 +3,7 @@ const state = {
   selectedConfig: null,
   positions: { cash: 0, holdings: [] },
   backtest: { metrics: {}, curve: [] },
+  performance: { records: [], latest: null },
   plan: null,
   busy: false,
 };
@@ -23,6 +24,12 @@ const els = {
   portfolioValue: document.querySelector("#portfolioValue"),
   cashValue: document.querySelector("#cashValue"),
   tradeCount: document.querySelector("#tradeCount"),
+  perfDaily: document.querySelector("#perfDaily"),
+  perfCum: document.querySelector("#perfCum"),
+  actionTitle: document.querySelector("#actionTitle"),
+  actionDetail: document.querySelector("#actionDetail"),
+  latestDataDate: document.querySelector("#latestDataDate"),
+  perfCount: document.querySelector("#perfCount"),
   backtestHint: document.querySelector("#backtestHint"),
   btAnnual: document.querySelector("#btAnnual"),
   btSharpe: document.querySelector("#btSharpe"),
@@ -30,8 +37,14 @@ const els = {
   equityChart: document.querySelector("#equityChart"),
   chartHint: document.querySelector("#chartHint"),
   weightChart: document.querySelector("#weightChart"),
+  targetBody: document.querySelector("#targetBody"),
+  targetHint: document.querySelector("#targetHint"),
+  projectedCash: document.querySelector("#projectedCash"),
   ordersBody: document.querySelector("#ordersBody"),
   orderHint: document.querySelector("#orderHint"),
+  performanceHint: document.querySelector("#performanceHint"),
+  performanceChart: document.querySelector("#performanceChart"),
+  performanceBody: document.querySelector("#performanceBody"),
   toast: document.querySelector("#toast"),
 };
 
@@ -57,6 +70,10 @@ function money(value) {
 function pct(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
   return `${(Number(value) * 100).toFixed(2)}%`;
+}
+
+function assetLabel(item) {
+  return item?.name ? `${item.symbol} ${item.name}` : item?.symbol || "-";
 }
 
 function showToast(message, isError = false) {
@@ -88,6 +105,14 @@ function renderStrategies() {
   renderStrategyMeta();
 }
 
+function mergeStrategy(strategy) {
+  if (!strategy?.path) return;
+  const index = state.strategies.findIndex((item) => item.path === strategy.path);
+  if (index >= 0) {
+    state.strategies[index] = { ...state.strategies[index], ...strategy };
+  }
+}
+
 function selectedStrategy() {
   return state.strategies.find((item) => item.path === state.selectedConfig) || state.strategies[0];
 }
@@ -109,6 +134,7 @@ function renderStrategyMeta() {
     ["数据源", strategy.can_refresh ? `${strategy.data_source}（可刷新）` : `${strategy.data_source}（本地缓存）`],
     ["资产数", strategy.universe_size],
     ["区间", strategy.date_range || "-"],
+    ["配置区间", strategy.configured_date_range || "-"],
     ["配置", strategy.path],
   ]
     .map(([label, value]) => `<div class="meta-row"><span>${label}</span><strong>${value}</strong></div>`)
@@ -145,33 +171,63 @@ function collectPositions() {
   };
 }
 
+function applyProjectedPositions(projected, targets = []) {
+  if (!projected) return;
+  const currentBySymbol = new Map((state.positions.holdings || []).map((item) => [item.symbol, item]));
+  const targetBySymbol = new Map((targets || []).map((item) => [item.symbol, item]));
+  state.positions = {
+    ...state.positions,
+    cash: Number(projected.cash ?? 0),
+    holdings: (projected.holdings || []).map((item) => {
+      const current = currentBySymbol.get(item.symbol) || {};
+      const target = targetBySymbol.get(item.symbol) || {};
+      return {
+        ...current,
+        symbol: item.symbol,
+        name: current.name || target.name || "",
+        shares: Number(item.shares || 0),
+      };
+    }),
+  };
+  renderPositions();
+}
+
 function renderPlan(plan) {
   els.asOfDate.textContent = plan?.as_of_date || "-";
+  els.latestDataDate.textContent = plan?.latest_data_date || "-";
   els.portfolioValue.textContent = money(plan?.portfolio_value);
   els.cashValue.textContent = money(plan?.cash);
   els.tradeCount.textContent = plan ? String(plan.trade_count) : "-";
+  renderDecision(plan);
   renderOrders(plan?.orders || []);
   drawWeights(plan?.targets || []);
-  applyProjectedPositions(plan?.projected_positions);
+  renderTargets(plan?.targets || [], plan?.projected_positions);
   if (plan?.backtest) {
     state.backtest = plan.backtest;
     renderBacktest();
   }
+  if (plan?.performance) {
+    state.performance = plan.performance;
+    renderPerformance();
+  }
 }
 
-function applyProjectedPositions(projected) {
-  if (!projected) return;
-  const names = new Map((state.positions.holdings || []).map((item) => [item.symbol, item.name || ""]));
-  state.positions = {
-    ...state.positions,
-    cash: Number(projected.cash || 0),
-    holdings: (projected.holdings || []).map((item) => ({
-      symbol: item.symbol,
-      name: names.get(item.symbol) || "",
-      shares: Number(item.shares || 0),
-    })),
-  };
-  renderPositions();
+function renderDecision(plan) {
+  if (!plan) {
+    els.actionTitle.textContent = "先生成今日计划";
+    els.actionDetail.textContent = "录入真实持仓和现金后，生成计划会给出今日买卖、目标仓位和收益跟踪。";
+    return;
+  }
+  const mode = plan.refresh_data ? "已刷新行情" : "使用本地缓存";
+  if (Number(plan.trade_count || 0) === 0) {
+    els.actionTitle.textContent = "今日无需调仓";
+    els.actionDetail.textContent = `${plan.as_of_date} ${mode}，当前持仓可保持不动。`;
+    return;
+  }
+  const first = [...(plan.orders || [])].sort((a, b) => Math.abs(b.trade_value || 0) - Math.abs(a.trade_value || 0))[0];
+  const firstText = first ? `金额最大的一笔是 ${first.side} ${first.symbol}，估算金额 ${money(first.trade_value)}。` : "";
+  els.actionTitle.textContent = `今日需要处理 ${plan.trade_count} 笔交易`;
+  els.actionDetail.textContent = `${plan.as_of_date} ${mode}。${firstText}`;
 }
 
 function renderBacktest() {
@@ -187,6 +243,30 @@ function renderBacktest() {
   drawEquityCurve(curve);
 }
 
+function renderTargets(targets, projected) {
+  els.targetBody.innerHTML = "";
+  els.projectedCash.textContent = projected ? money(projected.cash) : "-";
+  const positive = targets.filter((item) => Number(item.target_weight) > 0 || Number(item.estimated_weight) > 0);
+  els.targetHint.textContent = positive.length ? `${positive.length} 个目标持仓，按目标权重排序` : "生成计划后展示预计调仓结果";
+  if (!positive.length) {
+    els.targetBody.innerHTML = '<tr><td class="empty-row" colspan="5">暂无目标仓位</td></tr>';
+    return;
+  }
+  positive
+    .sort((a, b) => Number(b.target_weight || 0) - Number(a.target_weight || 0))
+    .forEach((item) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${assetLabel(item)}</td>
+        <td class="num">${pct(item.current_weight)}</td>
+        <td class="num">${pct(item.target_weight)}</td>
+        <td class="num">${pct(item.estimated_weight)}</td>
+        <td class="num">${money(item.estimated_shares)}</td>
+      `;
+      els.targetBody.appendChild(row);
+    });
+}
+
 function renderOrders(orders) {
   els.ordersBody.innerHTML = "";
   els.orderHint.textContent = orders.length ? `${orders.length} 笔需要处理` : "无需交易";
@@ -200,7 +280,7 @@ function renderOrders(orders) {
       const side = String(order.side || "HOLD").toLowerCase();
       const row = document.createElement("tr");
       row.innerHTML = `
-        <td>${order.symbol}</td>
+        <td>${assetLabel(order)}</td>
         <td><span class="badge ${side}">${order.side}</span></td>
         <td class="num">${money(order.trade_shares)}</td>
         <td class="num">${money(order.price)}</td>
@@ -209,6 +289,37 @@ function renderOrders(orders) {
       `;
       els.ordersBody.appendChild(row);
     });
+}
+
+function renderPerformance() {
+  const records = state.performance?.records || [];
+  const latest = state.performance?.latest;
+  els.perfDaily.textContent = latest ? pct(latest.daily_return) : "-";
+  els.perfCum.textContent = latest ? pct(latest.cumulative_return) : "-";
+  els.perfCount.textContent = records.length ? `${records.length} 条` : "-";
+  els.performanceHint.textContent = latest
+    ? `最近记录 ${latest.date}，组合市值 ${money(latest.portfolio_value)}`
+    : "生成计划后会自动写入本地跟踪账本";
+  els.performanceBody.innerHTML = "";
+  if (!records.length) {
+    els.performanceBody.innerHTML = '<tr><td class="empty-row" colspan="5">暂无收益跟踪记录</td></tr>';
+  } else {
+    records
+      .slice(-8)
+      .reverse()
+      .forEach((item) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.date}</td>
+          <td class="num">${money(item.portfolio_value)}</td>
+          <td class="num">${money(item.cash)}</td>
+          <td class="num">${pct(item.daily_return)}</td>
+          <td class="num">${pct(item.cumulative_return)}</td>
+        `;
+        els.performanceBody.appendChild(row);
+      });
+  }
+  drawPerformanceCurve(records);
 }
 
 function drawWeights(targets) {
@@ -230,7 +341,7 @@ function drawWeights(targets) {
     return;
   }
 
-  const left = 118;
+  const left = 168;
   const right = 28;
   const top = 24;
   const barHeight = 24;
@@ -241,7 +352,7 @@ function drawWeights(targets) {
     const y = top + index * (barHeight + gap);
     const width = ((rect.width - left - right) * Number(item.target_weight)) / maxWeight;
     ctx.fillStyle = "#2f3a45";
-    ctx.fillText(item.symbol, 18, y + 17);
+    ctx.fillText(assetLabel(item).slice(0, 18), 18, y + 17);
     ctx.fillStyle = "#e5e9ef";
     ctx.fillRect(left, y, rect.width - left - right, barHeight);
     ctx.fillStyle = palette[index % palette.length];
@@ -249,6 +360,65 @@ function drawWeights(targets) {
     ctx.fillStyle = "#17202a";
     ctx.fillText(pct(item.target_weight), left + Math.min(width + 8, rect.width - left - right - 48), y + 17);
   });
+}
+
+function drawPerformanceCurve(records) {
+  const canvas = els.performanceChart;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const pad = { left: 54, right: 24, top: 22, bottom: 34 };
+  const width = rect.width - pad.left - pad.right;
+  const height = rect.height - pad.top - pad.bottom;
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 1;
+  ctx.font = "12px sans-serif";
+  ctx.fillStyle = "#637083";
+
+  if (!records.length || width <= 0 || height <= 0) {
+    ctx.fillText("暂无实盘收益曲线", pad.left, pad.top + 22);
+    return;
+  }
+
+  const values = records.map((item) => Number(item.cumulative_return || 0));
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const span = Math.max(0.01, maxValue - minValue);
+  const yMin = minValue - span * 0.18;
+  const yMax = maxValue + span * 0.18;
+
+  for (let i = 0; i <= 4; i += 1) {
+    const y = pad.top + (height * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(rect.width - pad.right, y);
+    ctx.stroke();
+    const label = pct(yMax - ((yMax - yMin) * i) / 4);
+    ctx.fillText(label, 10, y + 4);
+  }
+
+  ctx.strokeStyle = "#d17a22";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  records.forEach((item, index) => {
+    const x = pad.left + (width * index) / Math.max(1, records.length - 1);
+    const y = pad.top + height - ((Number(item.cumulative_return || 0) - yMin) / (yMax - yMin)) * height;
+    if (index === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  const last = records[records.length - 1];
+  ctx.fillStyle = "#17202a";
+  ctx.fillText(records[0].date.slice(5), pad.left, rect.height - 12);
+  ctx.fillText(last.date.slice(5), rect.width - pad.right - 34, rect.height - 12);
+  ctx.fillStyle = "#d17a22";
+  ctx.fillText(`累计 ${pct(last.cumulative_return)}`, pad.left + 8, pad.top + 18);
 }
 
 function drawEquityCurve(curve) {
@@ -321,7 +491,12 @@ async function refreshBootstrapData() {
   const data = await api("/api/bootstrap");
   state.strategies = data.strategies || state.strategies;
   state.backtest = data.backtest || { metrics: {}, curve: [] };
+  state.performance = data.performance || { records: [], latest: null };
+  state.plan = data.last_plan || null;
+  renderStrategies();
   renderBacktest();
+  renderPerformance();
+  renderPlan(state.plan);
 }
 
 async function savePositions() {
@@ -332,6 +507,10 @@ async function savePositions() {
       body: JSON.stringify(collectPositions()),
     });
     renderPositions();
+    if (state.plan) {
+      els.actionTitle.textContent = "持仓已保存，建议重新生成计划";
+      els.actionDetail.textContent = `${state.plan.as_of_date || "最近计划"} 的计划仍保留在页面上；持仓或现金更新后，请重新生成以确认今日动作。`;
+    }
     showToast("持仓已保存");
   } finally {
     setBusy(false);
@@ -348,7 +527,10 @@ async function generatePlan() {
       refresh_data: els.refreshInput.checked,
     };
     state.plan = await api("/api/plan", { method: "POST", body: JSON.stringify(payload) });
+    mergeStrategy(state.plan.strategy);
+    renderStrategies();
     renderPlan(state.plan);
+    applyProjectedPositions(state.plan.projected_positions, state.plan.targets);
     const mode = state.plan.refresh_data ? "已刷新" : "缓存";
     showToast(`计划已生成：${state.plan.as_of_date}（${mode}数据 ${state.plan.latest_data_date || "-"}）`);
   } finally {
@@ -367,13 +549,16 @@ async function init() {
     state.selectedConfig = data.selected_config;
     state.positions = data.positions || state.positions;
     state.backtest = data.backtest || state.backtest;
+    state.performance = data.performance || state.performance;
+    state.plan = data.last_plan || null;
     els.lotSizeInput.value = data.settings?.lot_size ?? 100;
     els.minTradeInput.value = data.settings?.min_trade_value ?? 0;
     els.refreshInput.checked = Boolean(data.settings?.refresh_data);
     renderStrategies();
     renderPositions();
     renderBacktest();
-    renderPlan(null);
+    renderPerformance();
+    renderPlan(state.plan);
   } catch (error) {
     showToast(error.message, true);
   }
@@ -418,5 +603,6 @@ els.generateButton.addEventListener("click", async () => {
 window.addEventListener("resize", () => {
   drawWeights(state.plan?.targets || []);
   drawEquityCurve(state.backtest?.curve || []);
+  drawPerformanceCurve(state.performance?.records || []);
 });
 init();

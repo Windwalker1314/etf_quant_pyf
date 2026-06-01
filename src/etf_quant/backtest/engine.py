@@ -11,6 +11,9 @@ from etf_quant.factors.library import compute_factor_panel
 from etf_quant.strategies.base import Strategy
 
 
+OHLC_ANOMALY_FALLBACK_THRESHOLD = 0.01
+
+
 @dataclass(frozen=True)
 class BacktestResult:
     equity_curve: pd.Series
@@ -41,9 +44,11 @@ class BacktestEngine:
         if factor_data is None:
             factor_data = compute_factor_panel(market_data, factor_configs)
         close = market_data.close_wide()
-        open_ = market_data.open_wide()
         if self.config.execution == "next_open":
-            returns = self._next_open_returns(open_)
+            if market_data.ohlc_anomaly_ratio() > OHLC_ANOMALY_FALLBACK_THRESHOLD:
+                returns = close.pct_change().fillna(0.0)
+            else:
+                returns = self._next_open_returns(market_data.open_wide())
         else:
             returns = close.pct_change().fillna(0.0)
         dates = close.index
